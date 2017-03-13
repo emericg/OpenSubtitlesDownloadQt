@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# OpenSubtitlesDownload.py / Version 4.0
+# OpenSubtitlesDownloadQt.py / Version 5.0
 # This software is designed to help you find and download subtitles for your favorite videos!
 
 # You can browse the official website:
-# https://emericg.github.io/OpenSubtitlesDownload
+# https://emericg.github.io/OpenSubtitlesDownloadQt
 # You can browse the project's GitHub page:
-# https://github.com/emericg/OpenSubtitlesDownload
-# Learn much more about OpenSubtitlesDownload.py on its wiki:
-# https://github.com/emericg/OpenSubtitlesDownload/wiki
+# https://github.com/emericg/OpenSubtitlesDownloadQt
+# Learn much more about OpenSubtitlesDownloadQt.py on its wiki:
+# https://github.com/emericg/OpenSubtitlesDownloadQt/wiki
 
 # Copyright (c) 2017 by Emeric GRANGE <emeric.grange@gmail.com>
 #
@@ -200,7 +200,7 @@ if "PyQt5" in sys.modules :
             self.countBox = QtWidgets.QCheckBox("Downloads count")
 
             # Help / Link to the wiki
-            self.helpLabel = QtWidgets.QLabel("If you have some troubles: <a href=https://github.com/emericg/OpenSubtitlesDownload/wiki> Documentation </a> ")
+            self.helpLabel = QtWidgets.QLabel("If you have some troubles: <a href=https://github.com/emericg/OpenSubtitlesDownloadQt/wiki> Documentation </a> ")
             self.helpLabel.setOpenExternalLinks(True)
 
             # Finish button and its function
@@ -763,11 +763,11 @@ def dependencyChecker():
 
 # ==== Argument parsing
 
-# Get OpenSubtitlesDownload.py script path
+# Get OpenSubtitlesDownloadQt.py script path
 execPath = str(sys.argv[0])
 
 # Setup parser
-parser = argparse.ArgumentParser(prog='OpenSubtitlesDownload.py',
+parser = argparse.ArgumentParser(prog='OpenSubtitlesDownloadQt.py',
     description='This software is designed to help you find and download subtitles for your favorite videos!',
     formatter_class=argparse.RawTextHelpFormatter)
 
@@ -898,13 +898,13 @@ if opt_gui == 'qt' :
 try:
     try:
         # Connection to opensubtitles.org server
-        session = osd_server.LogIn(osd_username, osd_password, osd_language, 'opensubtitles-download 4.0')
+        session = osd_server.LogIn(osd_username, osd_password, osd_language, 'opensubtitles-download 5.0')
     except Exception:
         # Retry once, it could be a momentary overloaded server?
         time.sleep(3)
         try:
             # Connection to opensubtitles.org server
-            session = osd_server.LogIn(osd_username, osd_password, osd_language, 'opensubtitles-download 4.0')
+            session = osd_server.LogIn(osd_username, osd_password, osd_language, 'opensubtitles-download 5.0')
         except Exception:
             # Failed connection attempts?
             superPrint("error", "Connection error!", "Unable to reach opensubtitles.org servers!\n\nPlease check:\n- Your Internet connection status\n- www.opensubtitles.org availability\n- Your downloads limit (200 subtitles per 24h)\nThe subtitles search and download service is powered by opensubtitles.org. Be sure to donate if you appreciate the service provided!")
@@ -1071,7 +1071,7 @@ except (OSError, IOError, RuntimeError, TypeError, NameError, KeyError):
         sys.exit(1)
 
     # An unknown error occur, let's apologize before exiting
-    superPrint("error", "Unknown error!", "OpenSubtitlesDownload encountered an <b>unknown error</b>, sorry about that...\n\n" + \
+    superPrint("error", "Unknown error!", "OpenSubtitlesDownloadQt encountered an <b>unknown error</b>, sorry about that...\n\n" + \
                "Error: <b>" + str(sys.exc_info()[0]).replace('<', '[').replace('>', ']') + "</b>\n\n" + \
                "Just to be safe, please check:\n- www.opensubtitles.org availability\n- Your downloads limit (200 subtitles per 24h)\n- Your Internet connection status\n- That are using the latest version of this software ;-)")
 
