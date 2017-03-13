@@ -43,7 +43,7 @@ import argparse
 import time
 import gzip
 import shutil
-import urllib.request
+from urllib.request import urlretrieve
 from xmlrpc.client import ServerProxy, Error
 import configparser
 
@@ -590,11 +590,7 @@ if "PyQt5" in sys.modules :
             self.subPath = subtitlePath
 
         def run(self):
-            if sys.version_info >= (3,0):
-                response = urllib.urlretrieve(self.subURL)
-            else :
-                response = urllib2.urlopen(self.subURL)
-
+            response = urlretrieve(self.subURL)
             tmpFile = gzip.GzipFile(fileobj=StringIO.StringIO(response.read()))
 
             with open(self.subPath, 'w') as outfile:
@@ -849,7 +845,7 @@ else:
             for filePath in filePathListEnv.splitlines():
                 # Work a little bit of magic (Make sure we have a clean and absolute path, even from an URI)
                 filePath = os.path.abspath(os.path.basename(filePath))
-                filePath = urllib.request.url2pathname(filePath)
+                filePath = urllib3.request.url2pathname(filePath)
                 if checkFile(filePath):
                     videoPathList.append(filePath)
 
