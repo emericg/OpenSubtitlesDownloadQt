@@ -9,7 +9,8 @@ OpenSubtitlesDownloadQt.py
 Introduction
 ------------
 
-**OpenSubtitlesDownloadQt.py** is a small software written in python, built to help you **quickly find and download subtitles for your favorite videos**. It can be used as a nautilus script, or as a regular application working under GNOME or KDE desktop environments. You can also use it in full CLI mode (Command Line Interface) on your NAS, Raspberry Pi, macOS or wherever you want to bundle it really!
+**OpenSubtitlesDownloadQt.py** is a small software written in python, built to help you **quickly find and download subtitles for your favorite videos**. It can be used as a nautilus script, or as a regular application working under GNOME or KDE desktop environments.  
+It's a **fork** of [OpenSubtitlesDownload](https://github.com/emericg/OpenSubtitlesDownload) version 3.6, but using only a pyQt5 GUI and dropping python 2 support.
 
 The subtitles search is done by precisly **identifying your video files** by computing unique movie hash sums. This way, you have more chance to find the **exact subtitles for your videos**, avoiding synchronization problems between the subtitles and the soundtrack. But what if that doesn't work? Well, a search with the filename will be performed, but be aware: results are a bit more... unpredictable (don't worry, you will be warned! and you can even disable this feature if you want).
 
@@ -18,8 +19,7 @@ The subtitles search and download service is powered by [opensubtitles.org](http
 Features
 --------
 
-- Use a GNOME/GTK or KDE/Qt GUI depending on your favorite desktop environment.
-- Or just use the CLI! Great for automation, and it works on Linux and macOS.
+- Use a nice Qt5 GUI.
 - Query subtitles in more than 60 different languages for documentaries, movies, TV shows and more...
 - Query subtitles in multiple languages at once.
 - Query subtitles for multiple video files at once.
@@ -32,10 +32,9 @@ Features
 Requirements
 ------------
 
-- python (version 2 or 3)
-- zenity (only for GNOME based desktop environments)
-- kdialog (only for KDE based desktop environments)
-- common unix tools: wget & gzip (subtitles downloading), ps & grep (GUI autodetection)
+- python (version 3 only!)
+- PyQt5
+- common unix tools: wget & gzip (subtitles downloading)
 
 Installation
 ------------
@@ -50,7 +49,6 @@ Quick installation as a nautilus script, under GNOME 3 desktop environment:
 Website
 -------
 
-You can browse the project's website at <https://emericg.github.io/OpenSubtitlesDownloadQt>  
 You can browse the project's GitHub page at <https://github.com/emericg/OpenSubtitlesDownloadQt>  
 Learn much more about OpenSubtitlesDownloadQt.py installation and configuration on its wiki at <https://github.com/emericg/OpenSubtitlesDownloadQt/wiki>  
 
@@ -58,7 +56,7 @@ Contributors
 ------------
 
 - Emeric Grange <emeric.grange@gmail.com> maintainer
-- LenuX for his work on the Qt GUI
+- LenuX for his work on the Qt5 GUI
 - jeroenvdw for his work on the 'subtitles automatic selection' and the 'search by filename'
 - Gui13 for his work on the arguments parsing
 - Tomáš Hnyk <tomashnyk@gmail.com> for his work on the 'multiple language' feature
