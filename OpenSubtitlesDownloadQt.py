@@ -628,7 +628,6 @@ if "PyQt5" in sys.modules:
 
         def run(self):
             file_name, headers = urllib.request.urlretrieve(self.subURL)
-            print("file_name: " + file_name)
             tmpFile = gzip.GzipFile(file_name)
             open(self.subPath, 'wb').write(tmpFile.read())
             self.finished.emit()
