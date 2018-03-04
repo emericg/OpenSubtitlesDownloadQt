@@ -43,7 +43,7 @@ import argparse
 import time
 import gzip
 import shutil
-from urllib.request import urlretrieve
+import urllib.request
 from xmlrpc.client import ServerProxy, Error
 import configparser
 
@@ -590,12 +590,10 @@ if "PyQt5" in sys.modules :
             self.subPath = subtitlePath
 
         def run(self):
-            response = urlretrieve(self.subURL)
-            tmpFile = gzip.GzipFile(fileobj=StringIO.StringIO(response.read()))
-
-            with open(self.subPath, 'w') as outfile:
-                outfile.write(tmpFile.read())
-
+            file_name, headers = urllib.request.urlretrieve(self.subURL)
+            print("file_name: " + file_name)
+            tmpFile = gzip.GzipFile(file_name)
+            open(self.subPath, 'wb').write(tmpFile.read())
             self.finished.emit()
 
     def downloadQt(subtitleURL,subtitlePath):
