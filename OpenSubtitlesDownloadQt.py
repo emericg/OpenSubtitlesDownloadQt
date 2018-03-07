@@ -54,7 +54,7 @@ except ImportError:
 
 if sys.version_info <= (3,0):
     print("Python 3 is not available on your system, exiting...")
-    sys.exit(1)
+    sys.exit(2)
 
 # ==== Opensubtitles.org server settings =======================================
 
@@ -118,9 +118,9 @@ opt_selection_count    = 'off'
 opt_verbose            = 'off'
 
 # ==== Exit codes ==============================================================
-# -1: Success but NO subtitles downloaded
-#  0: Success and subtitles downloaded
-#  2: Failure
+# 0: Success and subtitles downloaded
+# 1: Success but no subtitles found
+# 2: Failure
 
 # ==== Super Print =============================================================
 # priority: info, warning, error
@@ -795,7 +795,7 @@ def dependencyChecker():
 # ==== Main program (execution starts here) ====================================
 # ==============================================================================
 
-ExitCode = 1
+ExitCode = 2
 
 # ==== Argument parsing
 
@@ -858,7 +858,7 @@ if opt_gui not in ['qt', 'gnome', 'kde', 'cli']:
 # ==== Check for the necessary tools (must be done after GUI auto detection)
 
 if dependencyChecker() == False:
-    sys.exit(1)
+    sys.exit(2)
 
 # ==== Get valid video paths
 
@@ -891,7 +891,7 @@ else:
 # If videoPathList is empty, abort!
 if len(videoPathList) == 0:
     parser.print_help()
-    sys.exit(-1)
+    sys.exit(1)
 
 # Check if the subtitles exists videoPathList
 if opt_search_overwrite == 'off':
@@ -901,7 +901,7 @@ if opt_search_overwrite == 'off':
 
     # If videoPathList is empty, exit!
     if len(videoPathList) == 0:
-        sys.exit(-1)
+        sys.exit(1)
 
 # The first video file will be processed by this instance
 videoPath = videoPathList[0]
@@ -955,12 +955,12 @@ try:
         except Exception:
             # Failed connection attempts?
             superPrint("error", "Connection error!", "Unable to reach opensubtitles.org servers!\n\nPlease check:\n- Your Internet connection status\n- www.opensubtitles.org availability\n- Your downloads limit (200 subtitles per 24h)\nThe subtitles search and download service is powered by opensubtitles.org. Be sure to donate if you appreciate the service provided!")
-            sys.exit(1)
+            sys.exit(2)
 
     # Connection refused?
     if session['status'] != '200 OK':
         superPrint("error", "Connection error!", "Opensubtitles.org servers refused the connection: " + session['status'] + ".\n\nPlease check:\n- Your Internet connection status\n- www.opensubtitles.org availability\n- Your 200 downloads per 24h limit")
-        sys.exit(1)
+        sys.exit(2)
 
     searchLanguage = 0
     searchLanguageResult = 0
@@ -1101,12 +1101,12 @@ try:
                 if process_subtitlesDownload != 0:
                     superPrint("error", "Subtitling error!", "An error occurred while downloading or writing <b>" + subtitlesList['data'][subIndex]['LanguageName'] + "</b> subtitles for <b>" + videoTitle + "</b>.")
                     osd_server.LogOut(session['token'])
-                    sys.exit(1)
+                    sys.exit(2)
 
     # Print a message if no subtitles have been found, for any of the languages
     if searchLanguageResult == 0:
         superPrint("info", "No subtitles found for: " + videoFileName, '<b>No subtitles found</b> for this video:\n<i>' + videoFileName + '</i>')
-        ExitCode = -1
+        ExitCode = 1
     else:
         ExitCode = 0
 
