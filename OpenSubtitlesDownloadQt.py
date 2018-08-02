@@ -482,6 +482,9 @@ class subsWindow(QtWidgets.QDialog):
         self.okButton.setDefault(True)
         self.okButton.clicked.connect(self.doAccept)
 
+        # Handle double click on the selected sub
+        self.subTable.doubleClicked.connect(self.doAccept)
+
         # Put the bottom buttons in a H layout, Cancel and validate buttons are pushed to the bottom right corner
         self.buttonHBox = QtWidgets.QHBoxLayout()
         self.buttonHBox.addWidget(self.settingsButton)
