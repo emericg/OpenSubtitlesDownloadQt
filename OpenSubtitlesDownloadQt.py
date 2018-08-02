@@ -71,44 +71,16 @@ osd_language = 'en'
 
 # ==== Language settings =======================================================
 
-# 1/ Change the search language by using any supported 3-letter (ISO 639-2) language codes:
-#    > Supported ISO codes: http://www.opensubtitles.org/addons/export_languages.php
-# 2/ Search for subtitles in several languages at once by using multiple language codes separated by a comma:
-#    > Exemple: opt_languages = ['eng,fre']
-opt_languages = ['eng']
-
-# Write 2-letter language code (ex: _en) at the end of the subtitles file. 'on', 'off' or 'auto'.
-# If you are regularly searching for several language at once, you sould use 'on'.
-opt_language_suffix = 'auto'
+# Write 2-letter language code (ex: _en) at the end of the subtitles file, separated by the following character.
 opt_language_separator = '_'
 
 # ==== Search settings =========================================================
-
-# Subtitles search and selection mode. Can be overridden at run time with '-a' argument.
-# - manual (in case of multiple results, let you choose the subtitles you want)
-# - auto (automatically select the best fitted subtitles)
-opt_search_mode = 'manual'
 
 # If the search by movie hash fails, search by file name will be used as backup.
 opt_search_byname = 'on'
 
 # Search and download a subtitles even if a subtitles file already exists.
 opt_search_overwrite = 'on'
-
-# ==== GUI settings ============================================================
-
-# Change the subtitles selection GUI size:
-opt_gui_width  = 720
-opt_gui_height = 320
-
-# Various GUI options. You can set them to 'on', 'off' or 'auto'.
-opt_selection_language = 'auto'
-opt_selection_hi       = 'auto'
-opt_selection_rating   = 'off'
-opt_selection_count    = 'off'
-
-# Enables extra output. Can be overridden at run time with '-v' argument.
-opt_verbose            = 'off'
 
 # ==== Exit codes ==============================================================
 # 0: Success and subtitles downloaded
@@ -404,7 +376,7 @@ class subsWindow(QtWidgets.QDialog):
         QtWidgets.QMainWindow.__init__(self)
         self.setWindowTitle('OpenSubtitlesDownload: Choose you subtitle')
         self.setWindowIcon(QtGui.QIcon.fromTheme("document-properties"))
-        self.resize(opt_gui_width, opt_gui_height)
+        self.resize(720, 320)
 
         self.vBox = QtWidgets.QVBoxLayout()    # Main vertical layout
 
@@ -432,8 +404,6 @@ class subsWindow(QtWidgets.QDialog):
         self.subTable.setShowGrid(False)   # Don't show the table grid
         self.subTable.setSelectionBehavior(1) # 1 = QAbstractItemView::SelectRows, selecting only rows 
         self.subTable.verticalHeader().setVisible(False)  # Don't print the lines number
-        self.subTable.horizontalHeader().setSectionResizeMode(3) # 3 = mode resize based on the contents
-        self.subTable.horizontalHeader().setStretchLastSection(True)
 
         ## Set col and lines nunbers depending on on the user's choices and the number of item in the list
         self.hLabels = "Available subtitles (synchronized)"
@@ -468,11 +438,12 @@ class subsWindow(QtWidgets.QDialog):
             item = QtWidgets.QTableWidgetItem(sub['SubFileName'])
             item.setFlags(QtCore.Qt.ItemIsEnabled|QtCore.Qt.ItemIsSelectable)  # Flags to disable editing of the cells
             self.subTable.setItem(rowIndex,colIndex, item)
+            self.subTable.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch) # Stretch the first column
 
             if opt_selection_language == "on":
                 colIndex += 1
                 item = QtWidgets.QTableWidgetItem(sub['LanguageName'])
-                item.setTextAlignment(0x0004) # Center the content of the cell
+                item.setTextAlignment(0x0084) # Center the content of the cell
                 item.setFlags(QtCore.Qt.ItemIsEnabled|QtCore.Qt.ItemIsSelectable)
                 self.subTable.setItem(rowIndex,colIndex, item)
 
@@ -481,23 +452,21 @@ class subsWindow(QtWidgets.QDialog):
                 if sub['SubHearingImpaired'] == '1':
                     item = QtWidgets.QTableWidgetItem(u'\u2713')
                     self.subTable.setItem(rowIndex,colIndex, item)
-                else:
-                    item = QtWidgets.QTableWidgetItem("")
-                    self.subTable.setItem(rowIndex,colIndex, item)
-                item.setTextAlignment(0x0004)
+                item.setTextAlignment(0x0084)
                 item.setFlags(QtCore.Qt.ItemIsEnabled|QtCore.Qt.ItemIsSelectable)
 
             if opt_selection_rating == "on":
                 colIndex += 1
                 item = QtWidgets.QTableWidgetItem(sub['SubRating'])
-                item.setTextAlignment(0x0004)
+                item.setTextAlignment(0x0084)
                 item.setFlags(QtCore.Qt.ItemIsEnabled)
                 item.setFlags(QtCore.Qt.ItemIsEnabled|QtCore.Qt.ItemIsSelectable)
+                self.subTable.setItem(rowIndex,colIndex, item)
 
             if opt_selection_count == "on":
                 colIndex += 1
                 item = QtWidgets.QTableWidgetItem(sub['SubDownloadsCnt'])
-                item.setTextAlignment(0x0004)
+                item.setTextAlignment(0x0084)
                 item.setFlags(QtCore.Qt.ItemIsEnabled|QtCore.Qt.ItemIsSelectable)
                 self.subTable.setItem(rowIndex,colIndex, item)
 
@@ -656,24 +625,15 @@ try:
             if checkFileValidity(filePath):
                 videoPathList.append(filePath)
 
-except Exception:
+    # Check if the subtitles exists videoPathList
+    if opt_search_overwrite == 'off':
+        for videoPathDispatch in videoPathList:
+            if checkSubtitlesExists(videoPathDispatch) == True:
+                videoPathList.remove(videoPathDispatch)
 
-    # Catch unhandled exceptions but do not spawn an error window
-    superPrint("error", "Unknown error!", "OpenSubtitlesDownload encountered an <b>unknown error</b>, sorry about that...\n\n" + \
-               "Error: <b>" + str(sys.exc_info()[0]).replace('<', '[').replace('>', ']') + "</b>\n" + \
-               "Line: <b>" + str(sys.exc_info()[-1].tb_lineno) + "</b>\n\n")
-
-# Check if the subtitles exists videoPathList
-if opt_search_overwrite == 'off':
-    for videoPathDispatch in videoPathList:
-        if checkSubtitlesExists(videoPathDispatch) == True:
-            videoPathList.remove(videoPathDispatch)
-
-    # If videoPathList is empty, exit!
-    if len(videoPathList) == 0:
-        sys.exit(1)
-
-try:
+        # If videoPathList is empty, exit!
+        if len(videoPathList) == 0:
+            sys.exit(1)
 
     # ==== Automatic configuration window 
     configQt(False)
@@ -789,7 +749,7 @@ try:
 
                         # Spawn selection window :
                         subtitlesSelected = selectionQt(subtitlesList)
-                
+
                 # If a subtitles has been selected at this point, download it!
                 if subtitlesSelected:
                     subIndex = 0
@@ -847,7 +807,7 @@ except (OSError, IOError, RuntimeError, TypeError, NameError, KeyError):
 except Exception:
 
     # Catch unhandled exceptions but do not spawn an error window
-    print("Unexpected error:", str(sys.exc_info()[0]))
+    superPrint("Unexpected error:", "Unknown error!", str(sys.exc_info()[0]))
 
 # Disconnect from opensubtitles.org server, then exit
 if session['token']: osd_server.LogOut(session['token'])
