@@ -33,9 +33,19 @@
 # Tomáš Hnyk <tomashnyk@gmail.com> for his work on the 'multiple language' feature
 # Carlos Acedo <carlos@linux-labs.net> for his work on the original script
 
+import sys
+if sys.version_info <= (3,0):
+    print("Python 3 is not available on your system, exiting...")
+    sys.exit(2)
+
+try:
+    from PyQt5 import QtCore, QtGui, QtWidgets
+except ImportError:
+    print("PyQt5 is not available on your system, exiting...")
+    sys.exit(2)
+
 import os
 import re
-import sys
 import struct
 import mimetypes
 import subprocess
@@ -46,16 +56,6 @@ import shutil
 import urllib.request
 from xmlrpc.client import ServerProxy, Error
 import configparser
-
-if sys.version_info <= (3,0):
-    print("Python 3 is not available on your system, exiting...")
-    sys.exit(2)
-
-try:
-    from PyQt5 import QtCore, QtGui, QtWidgets
-except ImportError:
-    print("PyQt5 is not available on your system, exiting...")
-    sys.exit(2)
 
 # ==== Opensubtitles.org server settings =======================================
 
@@ -803,14 +803,14 @@ except (OSError, IOError, RuntimeError, TypeError, NameError, KeyError):
         sys.exit(ExitCode)
 
     # An unknown error occur, let's apologize before exiting
-    superPrint("error", "Unknown error!", "OpenSubtitlesDownloadQt encountered an <b>unknown error</b>, sorry about that...\n\n" + \
+    superPrint("error", "Unexpected error!", "OpenSubtitlesDownloadQt encountered an <b>unknown error</b>, sorry about that...\n\n" + \
                "Error: <b>" + str(sys.exc_info()[0]).replace('<', '[').replace('>', ']') + "</b>\n\n" + \
                "Just to be safe, please check:\n- www.opensubtitles.org availability\n- Your downloads limit (200 subtitles per 24h)\n- Your Internet connection status\n- That are using the latest version of this software ;-)")
 
 except Exception:
 
     # Catch unhandled exceptions but do not spawn an error window
-    superPrint("Unexpected error:", "Unknown error!", str(sys.exc_info()[0]))
+    superPrint("error:", "Unknown error!", str(sys.exc_info()[0]))
 
 # Disconnect from opensubtitles.org server, then exit
 if session['token']: osd_server.LogOut(session['token'])
