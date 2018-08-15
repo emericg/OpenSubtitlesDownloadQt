@@ -233,7 +233,7 @@ def configQt(calledManually):
         confdir = os.path.join (os.getenv("HOME"), ".config/OpenSubtitlesDownload/")
         confpath = os.path.join (confdir, "OpenSubtitlesDownload.conf")
 
-    confparser = configparser.SafeConfigParser()
+    confparser = configparser.ConfigParser()
 
     if not os.path.isfile(confpath) or calledManually:
         # Create the conf folder if it doesn't exist:
