@@ -511,10 +511,13 @@ class subsWindow(QtWidgets.QDialog):
 
     def doConfig(self):
         configQt(True)
-        self.close()
+
+    def keyPressEvent(self, event):
+        if event.key() == QtCore.Qt.Key_Escape: # For escape button
+            sys.exit(0)
 
     def closeEvent(self,event):
-        if not self.next: # If cancel or X corner clicked, we close the script!
+        if not self.next: # If not "Accept" clicked..
             sys.exit(0)
 
 def selectionQt(subtitlesList):
