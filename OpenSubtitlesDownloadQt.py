@@ -108,8 +108,7 @@ def superPrint(priority, title, message):
 # If config file does exists parse it and get the values.
 
 subLang=[("Arabic","ara"),("Bengali","ben"),("Cantonese","yue"),("Dutch","nld"),("English","eng"),("Filipino","fil"),("French","fre"),("German","ger"),("Hindi","hin"),("Indonesian","ind"),("Italian","ita"),("Japanese","jpn"),("Korean","kor"),("Mandarin","mdr"),("Persian","per"),("Portuguese","por"),("Russian","rus"),("Spanish","spa"),("Swahili","swa"),("Turkish","tur"),("Vietnamese","vie")]
-global confpath
-global opt_languages,opt_language_suffix, opt_search_mode, opt_language, opt_hi, opt_rating, opt_count
+global confpath, opt_languages,opt_language_suffix, opt_search_mode, opt_language, opt_hi, opt_rating, opt_count
 
 class settingsWindow(QtWidgets.QDialog):
 
@@ -119,20 +118,29 @@ class settingsWindow(QtWidgets.QDialog):
         self.setWindowTitle('OpenSubtitlesDownload  Settings ')
         self.setWindowIcon(QtGui.QIcon.fromTheme("document-properties"))
 
-        # Get options from config file:
-        confparser = configparser.ConfigParser()
-        confparser.read(confpath)
-        opt_languages=[]
-        languages = ""
-        for i in range(0,len(confparser.items('languagesIDs'))):
-            languages += confparser.get('languagesIDs', 'sublanguageids'+str(i)) + ","
-        opt_languages.append(languages)
-        opt_language_suffix = confparser.get ('settings', 'opt_language_suffix')
-        opt_search_mode = confparser.get ('settings', 'opt_search_mode')
-        opt_language = confparser.get ('settings', 'opt_language')
-        opt_hi = confparser.get ('settings', 'opt_hi')
-        opt_rating = confparser.get ('settings', 'opt_rating')
-        opt_count = confparser.get ('settings', 'opt_count')
+        # Get options from config file if it exists, else initialize them:
+        if os.path.isfile(confpath):
+            confparser = configparser.ConfigParser()
+            confparser.read(confpath)
+            opt_languages=[]
+            languages = ""
+            for i in range(0,len(confparser.items('languagesIDs'))):
+                languages += confparser.get('languagesIDs', 'sublanguageids'+str(i)) + ","
+            opt_languages.append(languages)
+            opt_language_suffix = confparser.get ('settings', 'opt_language_suffix')
+            opt_search_mode = confparser.get ('settings', 'opt_search_mode')
+            opt_language = confparser.get ('settings', 'opt_language')
+            opt_hi = confparser.get ('settings', 'opt_hi')
+            opt_rating = confparser.get ('settings', 'opt_rating')
+            opt_count = confparser.get ('settings', 'opt_count')
+        else:
+            opt_languages=[]
+            opt_language_suffix = "auto"
+            opt_search_mode = "auto"
+            opt_language = ""
+            opt_hi = ""
+            opt_rating = ""
+            opt_count = ""
 
         # Create titles font
         titleFont = QtGui.QFont()
@@ -653,20 +661,19 @@ try:
 
         configQt()
 
-    else:
-        confparser = configparser.ConfigParser()
-        confparser.read(confpath)
-        opt_languages=[]
-        languages = ""
-        for i in range(0,len(confparser.items('languagesIDs'))):
-            languages += confparser.get('languagesIDs', 'sublanguageids'+str(i)) + ","
-        opt_languages.append(languages)
-        opt_language_suffix = confparser.get ('settings', 'opt_language_suffix')
-        opt_search_mode = confparser.get ('settings', 'opt_search_mode')
-        opt_language = confparser.get ('settings', 'opt_language')
-        opt_hi = confparser.get ('settings', 'opt_hi')
-        opt_rating = confparser.get ('settings', 'opt_rating')
-        opt_count = confparser.get ('settings', 'opt_count')
+    confparser = configparser.ConfigParser()
+    confparser.read(confpath)
+    opt_languages=[]
+    languages = ""
+    for i in range(0,len(confparser.items('languagesIDs'))):
+        languages += confparser.get('languagesIDs', 'sublanguageids'+str(i)) + ","
+    opt_languages.append(languages)
+    opt_language_suffix = confparser.get ('settings', 'opt_language_suffix')
+    opt_search_mode = confparser.get ('settings', 'opt_search_mode')
+    opt_language = confparser.get ('settings', 'opt_language')
+    opt_hi = confparser.get ('settings', 'opt_hi')
+    opt_rating = confparser.get ('settings', 'opt_rating')
+    opt_count = confparser.get ('settings', 'opt_count')
 
     # ==== Connection
     try:
