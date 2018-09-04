@@ -62,25 +62,10 @@ import configparser
 # XML-RPC server domain for opensubtitles.org:
 osd_server = ServerProxy('http://api.opensubtitles.org/xml-rpc')
 
-# You can use your opensubtitles.org account to avoid "in-subtitles" advertisment and bypass download limits
-# Be careful about your password security, it will be stored right here in plain text...
-# You can also change opensubtitles.org language, it will be used for error codes and stuff
-osd_username = ''
-osd_password = ''
-osd_language = 'en'
-
 # ==== Language settings =======================================================
 
 # Write 2-letter language code (ex: _en) at the end of the subtitles file, separated by the following character.
 opt_language_separator = '_'
-
-# ==== Search settings =========================================================
-
-# If the search by movie hash fails, search by file name will be used as backup.
-opt_search_byname = 'on'
-
-# Search and download a subtitles even if a subtitles file already exists.
-opt_search_overwrite = 'on'
 
 # ==== Exit codes ==============================================================
 # 0: Success and subtitles downloaded
@@ -108,7 +93,8 @@ def superPrint(priority, title, message):
 # If config file does exists parse it and get the values.
 
 subLang=[("Arabic","ara"),("Bengali","ben"),("Cantonese","yue"),("Dutch","nld"),("English","eng"),("Filipino","fil"),("French","fre"),("German","ger"),("Hindi","hin"),("Indonesian","ind"),("Italian","ita"),("Japanese","jpn"),("Korean","kor"),("Mandarin","mdr"),("Persian","per"),("Portuguese","por"),("Russian","rus"),("Spanish","spa"),("Swahili","swa"),("Turkish","tur"),("Vietnamese","vie")]
-global confpath, opt_languages,opt_language_suffix, opt_search_mode, opt_language, opt_hi, opt_rating, opt_count
+global opt_languages,opt_language_suffix, opt_search_mode, opt_language, opt_hi, opt_rating, opt_count, opt_byname, opt_overwrite
+global confpath, osd_username, osd_password
 
 class settingsWindow(QtWidgets.QDialog):
 
@@ -127,12 +113,16 @@ class settingsWindow(QtWidgets.QDialog):
             for i in range(0,len(confparser.items('languagesIDs'))):
                 languages += confparser.get('languagesIDs', 'sublanguageids'+str(i)) + ","
             opt_languages.append(languages)
-            opt_language_suffix = confparser.get ('settings', 'opt_language_suffix')
-            opt_search_mode = confparser.get ('settings', 'opt_search_mode')
-            opt_language = confparser.get ('settings', 'opt_language')
-            opt_hi = confparser.get ('settings', 'opt_hi')
-            opt_rating = confparser.get ('settings', 'opt_rating')
-            opt_count = confparser.get ('settings', 'opt_count')
+            opt_language_suffix = confparser.get('settings', 'opt_language_suffix')
+            opt_search_mode = confparser.get('settings', 'opt_search_mode')
+            opt_language = confparser.get('settings', 'opt_language')
+            opt_hi = confparser.get('settings', 'opt_hi')
+            opt_rating = confparser.get('settings', 'opt_rating')
+            opt_count = confparser.get('settings', 'opt_count')
+            osd_username = confparser.get('settings', 'osd_username')
+            osd_password = confparser.get('settings', 'osd_password')
+            opt_byname = confparser.get('settings', 'opt_byname')
+            opt_overwrite = confparser.get('settings', 'opt_overwrite')
         else:
             opt_languages=[]
             opt_language_suffix = "auto"
@@ -141,6 +131,10 @@ class settingsWindow(QtWidgets.QDialog):
             opt_hi = ""
             opt_rating = ""
             opt_count = ""
+            osd_username = ""
+            osd_password = ""
+            opt_byname = "on"
+            opt_overwrite = "on" 
 
         # Create titles font
         titleFont = QtGui.QFont()
@@ -154,16 +148,26 @@ class settingsWindow(QtWidgets.QDialog):
         # Preferences selection gui (comboboxes)
         self.prefLabel = QtWidgets.QLabel("2/ Select your preferences:")
         self.prefLabel.setFont(titleFont)
-        self.suffixLabel = QtWidgets.QLabel("Write 2-letter language code (ex: _en) at the end of the subtitles file?")
+        self.suffixLabel = QtWidgets.QLabel("Write 2-letter language code (ex: _en) at the end of the subtitles file:")
         self.opt_suffixBox = QtWidgets.QComboBox()
         self.opt_suffixBox.setMaximumWidth(100)
         self.opt_suffixBox.addItems(['auto','on','off'])
         self.opt_suffixBox.setCurrentIndex(self.opt_suffixBox.findText(opt_language_suffix, QtCore.Qt.MatchFixedString))
+        self.bynameLabel = QtWidgets.QLabel("If the search by movie hash fails, search by file name will be used:")
+        self.opt_bynameBox = QtWidgets.QComboBox()
+        self.opt_bynameBox.setMaximumWidth(100)
+        self.opt_bynameBox.addItems(['on','off'])
+        self.opt_bynameBox.setCurrentIndex(self.opt_bynameBox.findText(opt_byname, QtCore.Qt.MatchFixedString))
         self.modeLabel = QtWidgets.QLabel("Subtitles selection mode:")
         self.opt_modeBox = QtWidgets.QComboBox()
-        self.opt_modeBox.setMaximumWidth(100)
+        self.opt_modeBox.setMinimumWidth(100)
         self.opt_modeBox.addItems(['manual','auto'])
         self.opt_modeBox.setCurrentIndex(self.opt_modeBox.findText(opt_search_mode, QtCore.Qt.MatchFixedString))
+        self.overwriteLabel = QtWidgets.QLabel("Overwite existing subtitle:")
+        self.opt_overwriteBox = QtWidgets.QComboBox()
+        self.opt_overwriteBox.setMinimumWidth(100)
+        self.opt_overwriteBox.addItems(['on','off'])
+        self.opt_overwriteBox.setCurrentIndex(self.opt_overwriteBox.findText(opt_overwrite, QtCore.Qt.MatchFixedString))
 
         # Columns in selection window (checkboxes)
         self.columnLabel = QtWidgets.QLabel("3/ Select the colums to show in the selection window:")
@@ -178,6 +182,19 @@ class settingsWindow(QtWidgets.QDialog):
         self.opt_countBox = QtWidgets.QCheckBox("Downloads count")
         if opt_count == "on" : self.opt_countBox.setChecked(True)
 
+        # OSD user account
+        self.accountTitle = QtWidgets.QLabel("4/ Opensubtitles.org account:")
+        self.accountTitle.setFont(titleFont)
+        self.accountLabel = QtWidgets.QLabel("You can use your account to avoid ads and bypass download limits")
+        self.usernameLabel = QtWidgets.QLabel("Username :")
+        self.usernameEdit = QtWidgets.QLineEdit()
+        self.usernameEdit.setText(osd_username)
+        self.passwordLabel = QtWidgets.QLabel("Password :")
+        self.passwordEdit = QtWidgets.QLineEdit()
+        self.passwordEdit.setText(osd_password)
+        self.passwordEdit.setEchoMode(QtWidgets.QLineEdit.Password)
+
+
         # Help / Link to the wiki
         self.helpLabel = QtWidgets.QLabel("If you have any troubles: <a href=https://github.com/emericg/OpenSubtitlesDownloadQt/wiki> Visit the wiki!</a> ")
         self.helpLabel.setOpenExternalLinks(True)
@@ -186,12 +203,16 @@ class settingsWindow(QtWidgets.QDialog):
         self.finishButton = QtWidgets.QPushButton("Finish",self)
         self.finishButton.clicked.connect(self.doFinish)
 
-        self.vbox = QtWidgets.QVBoxLayout()    # Main vertical layout
-        self.grid = QtWidgets.QGridLayout()    # Grid layout for the languages buttons
+        self.vbox = QtWidgets.QVBoxLayout()          # Main vertical layout
+        self.grid = QtWidgets.QGridLayout()          # Grid layout for the languages buttons
+        self.prefLabelHBox = QtWidgets.QHBoxLayout() # Horizontal layout for the preferences labels
+        self.prefBoxHBox = QtWidgets.QHBoxLayout()   # Horizontal layout for the preferences boxes
+        self.prefBoxHBox.setAlignment(QtCore.Qt.AlignLeft)
+        self.haccountbox = QtWidgets.QHBoxLayout()   # Horizontal layout for the account labels and edits
 
         # Language section:
         self.vbox.addWidget(self.langLabel)
-        self.vbox.addSpacing(30)
+        self.vbox.addSpacing(20)
 
         # Create the buttons for languages from the list and add them to the layout
         x=0
@@ -209,19 +230,34 @@ class settingsWindow(QtWidgets.QDialog):
 
         self.vbox.addLayout(self.grid)
 
-        # Add the other widgets to the layout vertical
+        # Add the other widgets to the vertical layout
         self.vbox.addSpacing(20)
         self.vbox.addWidget(self.prefLabel)
         self.vbox.addWidget(self.suffixLabel)
         self.vbox.addWidget(self.opt_suffixBox)
-        self.vbox.addWidget(self.modeLabel)
-        self.vbox.addWidget(self.opt_modeBox)
-        self.vbox.addSpacing(30)
+        self.vbox.addWidget(self.bynameLabel)
+        self.vbox.addWidget(self.opt_bynameBox)
+        self.prefLabelHBox.addWidget(self.modeLabel)
+        self.prefLabelHBox.addWidget(self.overwriteLabel)
+        self.prefBoxHBox.addWidget(self.opt_modeBox)
+        self.prefBoxHBox.addSpacing(108)
+        self.prefBoxHBox.addWidget(self.opt_overwriteBox)
+        self.vbox.addLayout(self.prefLabelHBox) 
+        self.vbox.addLayout(self.prefBoxHBox) 
+        self.vbox.addSpacing(20)
         self.vbox.addWidget(self.columnLabel)
         self.vbox.addWidget(self.opt_languageBox)
         self.vbox.addWidget(self.opt_hiBox)
         self.vbox.addWidget(self.opt_ratingBox)
         self.vbox.addWidget(self.opt_countBox)
+        self.vbox.addSpacing(20)
+        self.vbox.addWidget(self.accountTitle)
+        self.vbox.addWidget(self.accountLabel)
+        self.haccountbox.addWidget(self.usernameLabel)
+        self.haccountbox.addWidget(self.usernameEdit)
+        self.haccountbox.addWidget(self.passwordLabel)
+        self.haccountbox.addWidget(self.passwordEdit)
+        self.vbox.addLayout(self.haccountbox) 
         self.vbox.addSpacing(20)
         self.vbox.addWidget(self.helpLabel)
         self.vbox.addWidget(self.finishButton)
@@ -243,6 +279,8 @@ class settingsWindow(QtWidgets.QDialog):
             # Get the values of the comboboxes :
             opt_language_suffix = self.opt_suffixBox.currentText()
             opt_search_mode = self.opt_modeBox.currentText()
+            opt_byname = self.opt_bynameBox.currentText()
+            opt_overwrite = self.opt_overwriteBox.currentText()
 
             # Same for the checkboxes:
             opt_language='off'
@@ -254,8 +292,11 @@ class settingsWindow(QtWidgets.QDialog):
             if self.opt_ratingBox.isChecked(): opt_rating='on'
             if self.opt_countBox.isChecked(): opt_count='on'
 
-            # Write the conf file with the parser:
+            # Get the account :
+            osd_username = self.usernameEdit.text()
+            osd_password = self.passwordEdit.text()          
 
+            # Write the conf file with the parser:
             confparser = configparser.ConfigParser()
             confparser.add_section('languagesIDs')
 
@@ -265,12 +306,16 @@ class settingsWindow(QtWidgets.QDialog):
                 i+=1
 
             confparser.add_section('settings')
-            confparser.set ('settings', 'opt_language_suffix', str(opt_language_suffix))
-            confparser.set ('settings', 'opt_search_mode', str(opt_search_mode))
-            confparser.set ('settings', 'opt_language', str(opt_language))
-            confparser.set ('settings', 'opt_hi', str(opt_hi))
-            confparser.set ('settings', 'opt_rating', str(opt_rating))
-            confparser.set ('settings', 'opt_count', str(opt_count))
+            confparser.set('settings', 'opt_language_suffix', str(opt_language_suffix))
+            confparser.set('settings', 'opt_search_mode', str(opt_search_mode))
+            confparser.set('settings', 'opt_language', str(opt_language))
+            confparser.set('settings', 'opt_hi', str(opt_hi))
+            confparser.set('settings', 'opt_rating', str(opt_rating))
+            confparser.set('settings', 'opt_count', str(opt_count))
+            confparser.set('settings', 'osd_username', osd_username)
+            confparser.set('settings', 'osd_password', osd_password)
+            confparser.set('settings', 'opt_byname', opt_byname)
+            confparser.set('settings', 'opt_overwrite', opt_overwrite)
 
             with open(confpath, 'w') as confile:
                 confparser.write(confile)
@@ -635,12 +680,6 @@ try:
             if checkFileValidity(filePath):
                 videoPathList.append(filePath)
 
-    # Check if the subtitles exists videoPathList
-    if opt_search_overwrite == 'off':
-        for videoPathDispatch in videoPathList:
-            if checkSubtitlesExists(videoPathDispatch) == True:
-                videoPathList.remove(videoPathDispatch)
-
         # If videoPathList is empty, exit!
         if len(videoPathList) == 0:
             sys.exit(1)
@@ -661,6 +700,9 @@ try:
 
         configQt()
 
+    if not os.path.isfile(confpath):  # Config file not created -> exit
+        sys.exit(ExitCode)
+
     confparser = configparser.ConfigParser()
     confparser.read(confpath)
     opt_languages=[]
@@ -668,23 +710,33 @@ try:
     for i in range(0,len(confparser.items('languagesIDs'))):
         languages += confparser.get('languagesIDs', 'sublanguageids'+str(i)) + ","
     opt_languages.append(languages)
-    opt_language_suffix = confparser.get ('settings', 'opt_language_suffix')
-    opt_search_mode = confparser.get ('settings', 'opt_search_mode')
-    opt_language = confparser.get ('settings', 'opt_language')
-    opt_hi = confparser.get ('settings', 'opt_hi')
-    opt_rating = confparser.get ('settings', 'opt_rating')
-    opt_count = confparser.get ('settings', 'opt_count')
+    opt_language_suffix = confparser.get('settings', 'opt_language_suffix')
+    opt_search_mode = confparser.get('settings', 'opt_search_mode')
+    opt_language = confparser.get('settings', 'opt_language')
+    opt_hi = confparser.get('settings', 'opt_hi')
+    opt_rating = confparser.get('settings', 'opt_rating')
+    opt_count = confparser.get('settings', 'opt_count')
+    osd_username = confparser.get('settings', 'osd_username')
+    osd_password = confparser.get('settings', 'osd_password')
+    opt_byname = confparser.get('settings', 'opt_byname')
+    opt_overwrite = confparser.get('settings', 'opt_overwrite')
 
+    # Check if the subtitles exists videoPathList
+    if opt_overwrite == 'off':
+        for videoPathDispatch in videoPathList:
+            if checkSubtitlesExists(videoPathDispatch) == True:
+                videoPathList.remove(videoPathDispatch)
+    
     # ==== Connection
     try:
         # Connection to opensubtitles.org server
-        session = osd_server.LogIn(osd_username, osd_password, osd_language, 'opensubtitles-download 5.0')
+        session = osd_server.LogIn(osd_username, osd_password, "en", 'opensubtitles-download 5.0')
     except Exception:
         # Retry once, it could be a momentary overloaded server?
         time.sleep(3)
         try:
             # Connection to opensubtitles.org server
-            session = osd_server.LogIn(osd_username, osd_password, osd_language, 'opensubtitles-download 5.0')
+            session = osd_server.LogIn(osd_username, osd_password, "en", 'opensubtitles-download 5.0')
         except Exception:
             # Failed connection attempts?
             superPrint("error", "Connection error!", "Unable to reach opensubtitles.org servers!\n\nPlease check:\n- Your Internet connection status\n- www.opensubtitles.org availability\n- Your downloads limit (200 subtitles per 24h)\nThe subtitles search and download service is powered by opensubtitles.org. Be sure to donate if you appreciate the service provided!")
@@ -726,7 +778,7 @@ try:
                     superPrint("error", "Search error!", "Unable to reach opensubtitles.org servers!\n<b>Search error</b>")
 
             # No results using search by hash? Retry with filename
-            if (not subtitlesList['data']) and (opt_search_byname == 'on'):
+            if (not subtitlesList['data']) and (opt_byname == 'on'):
                 searchList = []
                 searchList.append({'sublanguageid':SubLanguageID, 'query':videoFileName})
                 try:
