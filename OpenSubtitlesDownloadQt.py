@@ -38,23 +38,21 @@ if sys.version_info <= (3,0):
     print("Python 3 is not available on your system, exiting...")
     sys.exit(2)
 
+import os
+import re
+import struct
+import mimetypes
+import time
+import gzip
+import urllib.request
+
 try:
     from PyQt5 import QtCore, QtGui, QtWidgets
 except ImportError:
     print("PyQt5 is not available on your system, exiting...")
     sys.exit(2)
 
-import os
-import re
-import struct
-import mimetypes
-import subprocess
-import argparse
-import time
-import gzip
-import shutil
-import urllib.request
-from xmlrpc.client import ServerProxy, Error
+from xmlrpc.client import ServerProxy
 import configparser
 
 # ==== Opensubtitles.org server settings =======================================
@@ -859,15 +857,16 @@ try:
 
                     # Write language code into the filename?
                     if ((opt_language_suffix == 'on') or
-                        (opt_language_suffix == 'auto' and searchLanguageResult > 1)):
-                        subPath = videoPath.rsplit('.', 1)[0] + subLangId + '.' + subtitlesList['data'][subIndex]['SubFormat']
+                            (opt_language_suffix == 'auto' and searchLanguageResult > 1)):
+                        subPath = videoPath.rsplit('.', 1)[0] + subLangId + '.' + \
+                        subtitlesList['data'][subIndex]['SubFormat']
 
                     # Escape non-alphanumeric characters from the subtitles path
                     subPath = re.escape(subPath)
 
                     # Download and unzip the selected subtitles (with progressbar)
                     subPath = subPath.replace("\\", "")
-                    process_subtitlesDownload = downloadQt(subURL,subPath)
+                    process_subtitlesDownload = downloadQt(subURL, subPath)
                     
                     # If an error occurs, say so
                     if process_subtitlesDownload != 0:
@@ -899,5 +898,6 @@ except Exception:
     superPrint("error:", "Unknown error!", str(sys.exc_info()[0]))
 
 # Disconnect from opensubtitles.org server, then exit
-if session['token']: osd_server.LogOut(session['token'])
+if session['token']:
+    osd_server.LogOut(session['token'])
 sys.exit(ExitCode)
