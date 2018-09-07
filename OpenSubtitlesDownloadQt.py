@@ -60,11 +60,6 @@ import configparser
 # XML-RPC server domain for opensubtitles.org:
 osd_server = ServerProxy('http://api.opensubtitles.org/xml-rpc')
 
-# ==== Language settings =======================================================
-
-# Write 2-letter language code (ex: _en) at the end of the subtitles file, separated by the following character.
-opt_language_separator = '_'
-
 # ==== Exit codes ==============================================================
 # 0: Success and subtitles downloaded
 # 1: Success but no subtitles found
@@ -369,7 +364,7 @@ def checkSubtitlesExists(path):
                 splitted_languages_list = opt_languages[0].split(',')
             else:
                 splitted_languages_list = opt_languages
-            subPath = path.rsplit('.', 1)[0] + opt_language_separator + splitted_languages_list[0] + '.' + ext
+            subPath = path.rsplit('.', 1)[0] + "_" + splitted_languages_list[0] + '.' + ext
             if os.path.isfile(subPath) == True:
                 superPrint("info", "Subtitles already downloaded!", "A subtitles file already exists for this file:\n<i>" + subPath + "</i>")
                 return True
@@ -852,7 +847,7 @@ try:
                         else:
                             subIndexTemp += 1
 
-                    subLangId = opt_language_separator  + subtitlesList['data'][subIndex]['ISO639']
+                    subLangId = "_"  + subtitlesList['data'][subIndex]['ISO639']
                     subLangName = subtitlesList['data'][subIndex]['LanguageName']
                     subURL = subtitlesList['data'][subIndex]['SubDownloadLink']
                     subPath = videoPath.rsplit('.', 1)[0] + '.' + subtitlesList['data'][subIndex]['SubFormat']
