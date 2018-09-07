@@ -546,10 +546,10 @@ class subsWindow(QtWidgets.QDialog):
         self.vBox.addLayout(self.buttonHBox)
         self.setLayout(self.vBox)
 
-        self.next = False # Variable to know if we continue the script after this window
+        self.next = False
 
     def doCancel(self):
-        self.close()
+        sys.exit(0)
 
     def doAccept(self):
         self.next = True
@@ -559,8 +559,10 @@ class subsWindow(QtWidgets.QDialog):
     def doConfig(self):
         configQt()
 
-    def keyPressEvent(self, event):
-        if event.key() == QtCore.Qt.Key_Escape: # For escape button
+    def keyPressEvent(self, event): # Handle enter and escape buttons
+        if event.key() == QtCore.Qt.Key_Return:
+            self.doAccept()
+        if event.key() == QtCore.Qt.Key_Escape:
             sys.exit(0)
 
     def closeEvent(self,event):
