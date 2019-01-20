@@ -117,7 +117,7 @@ class settingsWindow(QtWidgets.QDialog):
         else:
             opt_languages=[]
             opt_language_suffix = "auto"
-            opt_search_mode = "auto"
+            opt_search_mode = "manual"
             opt_language = ""
             opt_hi = ""
             opt_rating = ""
