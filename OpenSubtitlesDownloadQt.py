@@ -11,7 +11,7 @@
 # Learn much more about OpenSubtitlesDownloadQt.py on its wiki:
 # https://github.com/emericg/OpenSubtitlesDownloadQt/wiki
 
-# Copyright (c) 2018 by Emeric GRANGE <emeric.grange@gmail.com>
+# Copyright (c) 2019 by Emeric GRANGE <emeric.grange@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -37,6 +37,11 @@ import sys
 if sys.version_info <= (3,0):
     print("Python 3 is not available on your system, exiting...")
     sys.exit(2)
+try:
+    from PyQt5 import QtCore, QtGui, QtWidgets
+except ImportError:
+    print("PyQt5 is not available on your system, exiting...")
+    sys.exit(2)
 
 import os
 import re
@@ -45,13 +50,6 @@ import mimetypes
 import time
 import gzip
 import urllib.request
-
-try:
-    from PyQt5 import QtCore, QtGui, QtWidgets
-except ImportError:
-    print("PyQt5 is not available on your system, exiting...")
-    sys.exit(2)
-
 from xmlrpc.client import ServerProxy
 import configparser
 
@@ -79,11 +77,11 @@ def superPrint(priority, title, message):
     alert.setText(message)
     alert.exec_()
 
-# ==== QT Settings Management Window ===========================================
+# ==== Qt Settings Management Window ===========================================
 # If config file does not exists create it, put the default values and print the
 # settings window, then get the values and write the config file.
 #
-# If config file does exists parse it and get the values.
+# If config file does exists, parse it and get the values.
 
 subLang=[("Arabic","ara"),("Bengali","ben"),("Cantonese","yue"),("Dutch","nld"),("English","eng"),("Filipino","fil"),("French","fre"),("German","ger"),("Hindi","hin"),("Indonesian","ind"),("Italian","ita"),("Japanese","jpn"),("Korean","kor"),("Mandarin","mdr"),("Persian","per"),("Portuguese","por"),("Russian","rus"),("Spanish","spa"),("Swahili","swa"),("Turkish","tur"),("Vietnamese","vie")]
 global opt_languages,opt_language_suffix, opt_search_mode, opt_language, opt_hi, opt_rating, opt_count, opt_byname, opt_overwrite
@@ -94,7 +92,7 @@ class settingsWindow(QtWidgets.QDialog):
     def __init__(self,parent=None):
         super(settingsWindow,self).__init__(parent)
         QtWidgets.QMainWindow.__init__(self)
-        self.setWindowTitle('OpenSubtitlesDownload  Settings ')
+        self.setWindowTitle('OpenSubtitlesDownloadQt settings panel')
         self.setWindowIcon(QtGui.QIcon.fromTheme("document-properties"))
 
         # Get options from config file if it exists, else initialize them:
@@ -127,7 +125,7 @@ class settingsWindow(QtWidgets.QDialog):
             osd_username = ""
             osd_password = ""
             opt_byname = "on"
-            opt_overwrite = "on" 
+            opt_overwrite = "on"
 
         # Create titles font
         titleFont = QtGui.QFont()
@@ -167,29 +165,28 @@ class settingsWindow(QtWidgets.QDialog):
         self.columnLabel.setFont(titleFont)
 
         self.opt_languageBox = QtWidgets.QCheckBox("Subtitles language")
-        if opt_language == "on" : self.opt_languageBox.setChecked(True)
+        if opt_language == "on": self.opt_languageBox.setChecked(True)
         self.opt_hiBox = QtWidgets.QCheckBox("Hearing impaired version")
-        if opt_hi == "on" : self.opt_hiBox.setChecked(True)
+        if opt_hi == "on": self.opt_hiBox.setChecked(True)
         self.opt_ratingBox = QtWidgets.QCheckBox("Users rating")
-        if opt_rating == "on" : self.opt_ratingBox.setChecked(True)
+        if opt_rating == "on": self.opt_ratingBox.setChecked(True)
         self.opt_countBox = QtWidgets.QCheckBox("Downloads count")
-        if opt_count == "on" : self.opt_countBox.setChecked(True)
+        if opt_count == "on": self.opt_countBox.setChecked(True)
 
         # OSD user account
         self.accountTitle = QtWidgets.QLabel("4/ Opensubtitles.org account:")
         self.accountTitle.setFont(titleFont)
         self.accountLabel = QtWidgets.QLabel("You can use your account to avoid ads and bypass download limits")
-        self.usernameLabel = QtWidgets.QLabel("Username :")
+        self.usernameLabel = QtWidgets.QLabel("Username: ")
         self.usernameEdit = QtWidgets.QLineEdit()
         self.usernameEdit.setText(osd_username)
-        self.passwordLabel = QtWidgets.QLabel("Password :")
+        self.passwordLabel = QtWidgets.QLabel("Password: ")
         self.passwordEdit = QtWidgets.QLineEdit()
         self.passwordEdit.setText(osd_password)
         self.passwordEdit.setEchoMode(QtWidgets.QLineEdit.Password)
 
-
         # Help / Link to the wiki
-        self.helpLabel = QtWidgets.QLabel("If you have any troubles: <a href=https://github.com/emericg/OpenSubtitlesDownloadQt/wiki> Visit the wiki!</a> ")
+        self.helpLabel = QtWidgets.QLabel("If you have any troubles you can <a href=https://github.com/emericg/OpenSubtitlesDownloadQt/wiki>visit the wiki pages!</a> ")
         self.helpLabel.setOpenExternalLinks(True)
 
         # Finish button and its function
@@ -215,7 +212,7 @@ class settingsWindow(QtWidgets.QDialog):
             self.pushLang.append(QtWidgets.QPushButton(subLang[i][0],self))
             self.pushLang[i].setCheckable(True)
 
-            if str(subLang[i][1]) in str(opt_languages) :
+            if str(subLang[i][1]) in str(opt_languages):
                 self.pushLang[i].setChecked(True)
             self.grid.addWidget(self.pushLang[i],x,y)
             y=(y+1)%3 # Coz we want 3 columns
@@ -268,8 +265,8 @@ class settingsWindow(QtWidgets.QDialog):
         if len(opt_languages) == 0:
             superPrint(self,self.windowTitle(),"Cannot save with those settings: choose at least one language please")
         else:
-            
-            # Get the values of the comboboxes :
+
+            # Get the values of the comboboxes:
             opt_language_suffix = self.opt_suffixBox.currentText()
             opt_search_mode = self.opt_modeBox.currentText()
             opt_byname = self.opt_bynameBox.currentText()
@@ -285,9 +282,9 @@ class settingsWindow(QtWidgets.QDialog):
             if self.opt_ratingBox.isChecked(): opt_rating='on'
             if self.opt_countBox.isChecked(): opt_count='on'
 
-            # Get the account :
+            # Get the account:
             osd_username = self.usernameEdit.text()
-            osd_password = self.passwordEdit.text()          
+            osd_password = self.passwordEdit.text()
 
             # Write the conf file with the parser:
             confparser = configparser.ConfigParser()
@@ -315,12 +312,10 @@ class settingsWindow(QtWidgets.QDialog):
 
             # Close the window when its all saved
             self.close()
-            
 
 def configQt():
     gui = settingsWindow()
     gui.exec_()
-
 
 # ==== Check file path & type ==================================================
 
@@ -441,17 +436,17 @@ class subsWindow(QtWidgets.QDialog):
         self.nameHBox.addWidget(self.nameLabel)
         self.nameHBox.addStretch(1)
 
-        # Table containing the list of the subtitles:
+        # Table containing the list of the subtitles:
         self.subTable = QtWidgets.QTableWidget()
-        self.subTable.setShowGrid(False)   # Don't show the table grid
-        self.subTable.setSelectionBehavior(1) # 1 = QAbstractItemView::SelectRows, selecting only rows 
-        self.subTable.verticalHeader().setVisible(False)  # Don't print the lines number
+        self.subTable.setShowGrid(False)   # Don't show the table grid
+        self.subTable.setSelectionBehavior(1) # 1 = QAbstractItemView::SelectRows, selecting only rows
+        self.subTable.verticalHeader().setVisible(False)  # Don't print the lines number
 
-        ## Set col and lines nunbers depending on on the user's choices and the number of item in the list
+        ## Set col and lines nunbers depending on on the user's choices and the number of item in the list
         self.hLabels = "Available subtitles (synchronized)"
         self.colCount = 1
 
-        # Build the colums an their labels, depending on the user's choices
+        # Build the colums an their labels, depending on the user's choices
         if opt_language == "on":
             self.hLabels += ";Language"
             self.colCount += 1
@@ -472,7 +467,7 @@ class subsWindow(QtWidgets.QDialog):
         self.subTable.setHorizontalHeaderLabels(self.hLabels.split(";"))
         self.subTable.setRowCount(len(subtitlesList['data']))
 
-        # Set the content of the table:
+        # Set the content of the table:
         rowIndex = 0
 
         for sub in subtitlesList['data']:
@@ -480,7 +475,7 @@ class subsWindow(QtWidgets.QDialog):
             item = QtWidgets.QTableWidgetItem(sub['SubFileName'])
             item.setFlags(QtCore.Qt.ItemIsEnabled|QtCore.Qt.ItemIsSelectable)  # Flags to disable editing of the cells
             self.subTable.setItem(rowIndex,colIndex, item)
-            self.subTable.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch) # Stretch the first column
+            self.subTable.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch) # Stretch the first column
 
             if opt_language == "on":
                 colIndex += 1
@@ -512,10 +507,10 @@ class subsWindow(QtWidgets.QDialog):
                 item.setFlags(QtCore.Qt.ItemIsEnabled|QtCore.Qt.ItemIsSelectable)
                 self.subTable.setItem(rowIndex,colIndex, item)
 
-            rowIndex += 1 # Next row
+            rowIndex += 1 # Next row
         self.subTable.selectRow(0) # select the first row by default
 
-        # Create the buttons and connect them to the right function
+        # Create the buttons and connect them to the right function
         self.settingsButton = QtWidgets.QPushButton("Settings",self)
         self.settingsButton.clicked.connect(self.doConfig)
         self.cancelButton = QtWidgets.QPushButton("Cancel",self)
@@ -527,14 +522,14 @@ class subsWindow(QtWidgets.QDialog):
         # Handle double click on the selected sub
         self.subTable.doubleClicked.connect(self.doAccept)
 
-        # Put the bottom buttons in a H layout, Cancel and validate buttons are pushed to the bottom right corner
+        # Put the bottom buttons in a H layout, Cancel and validate buttons are pushed to the bottom right corner
         self.buttonHBox = QtWidgets.QHBoxLayout()
         self.buttonHBox.addWidget(self.settingsButton)
         self.buttonHBox.addStretch(1)
         self.buttonHBox.addWidget(self.cancelButton)
         self.buttonHBox.addWidget(self.okButton)
 
-        # Put the differents layouts in the main vertical one
+        # Put the differents layouts in the main vertical one
         self.vBox.addLayout(self.titleHBox)
         self.vBox.addLayout(self.nameHBox)
         self.vBox.addWidget(self.subTable)
@@ -554,7 +549,7 @@ class subsWindow(QtWidgets.QDialog):
     def doConfig(self):
         configQt()
 
-    def keyPressEvent(self, event): # Handle enter and escape buttons
+    def keyPressEvent(self, event): # Handle enter and escape buttons
         if event.key() == QtCore.Qt.Key_Return:
             self.doAccept()
         if event.key() == QtCore.Qt.Key_Escape:
@@ -594,12 +589,12 @@ class downloadWindow(QtWidgets.QDialog):
             self.progressBar.setRange(0,1)
             self.close()
 
-        # Initiate the dowloading task in a thread
+        # Initiate the dowloading task in a thread
         self.task = downloadThread(subtitleURL, subtitlePath)
         self.task.finished.connect(onFinished)
         self.task.start()
 
-# Thread for downloading the sub and when done emit the signal to close the window
+# Thread for downloading the sub and when done emit the signal to close the window
 class downloadThread(QtCore.QThread):
     def __init__(self, subtitleURL, subtitlePath, parent=None):
         super(downloadThread,self).__init__(parent)
@@ -664,8 +659,7 @@ videoPathList = []
 # Try to get file(s) provided by nautilus
 filePathListEnv = os.environ.get('NAUTILUS_SCRIPT_SELECTED_URIS')
 
-try: 
-
+try:
     if filePathListEnv != None:
         # Check file(s) type and validity
         for filePath in filePathListEnv.splitlines():
@@ -687,7 +681,7 @@ try:
         confdir = os.path.join(os.getenv("HOME"), ".config/OpenSubtitlesDownload/")
         confpath = os.path.join(confdir, "OpenSubtitlesDownload.conf")
 
-    if not os.path.isfile(confpath):  # Config file not found, call config window
+    if not os.path.isfile(confpath):  # Config file not found, call config window
         try:
             os.stat(confdir)
         except:
@@ -695,7 +689,7 @@ try:
 
         configQt()
 
-    if not os.path.isfile(confpath):  # Config file not created -> exit
+    if not os.path.isfile(confpath):  # Config file not created -> exit
         sys.exit(ExitCode)
 
     confparser = configparser.ConfigParser()
@@ -721,7 +715,7 @@ try:
         for videoPathDispatch in videoPathList:
             if checkSubtitlesExists(videoPathDispatch) == True:
                 videoPathList.remove(videoPathDispatch)
-    
+
     # ==== Connection
     try:
         # Connection to opensubtitles.org server
@@ -831,7 +825,7 @@ try:
                             if opt_count == 'auto':
                                 opt_count = 'on'
 
-                        # Spawn selection window :
+                        # Spawn selection window:
                         subtitlesSelected = selectionQt(subtitlesList)
 
                 # If a subtitles has been selected at this point, download it!
@@ -864,7 +858,7 @@ try:
                     # Download and unzip the selected subtitles (with progressbar)
                     subPath = subPath.replace("\\", "")
                     process_subtitlesDownload = downloadQt(subURL, subPath)
-                    
+
                     # If an error occurs, say so
                     if process_subtitlesDownload != 0:
                         superPrint("error", "Subtitling error!", "An error occurred while downloading or writing <b>" + subtitlesList['data'][subIndex]['LanguageName'] + "</b> subtitles for <b>" + videoTitle + "</b>.")
