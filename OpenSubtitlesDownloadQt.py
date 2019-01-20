@@ -176,7 +176,7 @@ class settingsWindow(QtWidgets.QDialog):
         # OSD user account
         self.accountTitle = QtWidgets.QLabel("4/ Opensubtitles.org account:")
         self.accountTitle.setFont(titleFont)
-        self.accountLabel = QtWidgets.QLabel("You can use your account to avoid ads and bypass download limits")
+        self.accountLabel = QtWidgets.QLabel("You can use your account to avoid ads and bypass download limits.")
         self.usernameLabel = QtWidgets.QLabel("Username: ")
         self.usernameEdit = QtWidgets.QLineEdit()
         self.usernameEdit.setText(osd_username)
@@ -190,19 +190,24 @@ class settingsWindow(QtWidgets.QDialog):
         self.helpLabel.setOpenExternalLinks(True)
 
         # Finish button and its function
-        self.finishButton = QtWidgets.QPushButton("Finish",self)
+        self.finishButton = QtWidgets.QPushButton("Save settings",self)
         self.finishButton.clicked.connect(self.doFinish)
 
         self.vbox = QtWidgets.QVBoxLayout()          # Main vertical layout
+        self.vbox.setSpacing(4)
         self.grid = QtWidgets.QGridLayout()          # Grid layout for the languages buttons
+        self.grid.setSpacing(4)
         self.prefLabelHBox = QtWidgets.QHBoxLayout() # Horizontal layout for the preferences labels
+        self.prefLabelHBox.setSpacing(4)
         self.prefBoxHBox = QtWidgets.QHBoxLayout()   # Horizontal layout for the preferences boxes
         self.prefBoxHBox.setAlignment(QtCore.Qt.AlignLeft)
+        self.prefBoxHBox.setSpacing(4)
         self.haccountbox = QtWidgets.QHBoxLayout()   # Horizontal layout for the account labels and edits
+        self.haccountbox.setSpacing(4)
 
         # Language section:
         self.vbox.addWidget(self.langLabel)
-        self.vbox.addSpacing(20)
+        self.vbox.addSpacing(4)
 
         # Create the buttons for languages from the list and add them to the layout
         x=0
@@ -221,7 +226,7 @@ class settingsWindow(QtWidgets.QDialog):
         self.vbox.addLayout(self.grid)
 
         # Add the other widgets to the vertical layout
-        self.vbox.addSpacing(20)
+        self.vbox.addSpacing(10)
         self.vbox.addWidget(self.prefLabel)
         self.vbox.addWidget(self.suffixLabel)
         self.vbox.addWidget(self.opt_suffixBox)
@@ -230,26 +235,27 @@ class settingsWindow(QtWidgets.QDialog):
         self.prefLabelHBox.addWidget(self.modeLabel)
         self.prefLabelHBox.addWidget(self.overwriteLabel)
         self.prefBoxHBox.addWidget(self.opt_modeBox)
-        self.prefBoxHBox.addSpacing(108)
+        self.prefBoxHBox.addSpacing(120)
         self.prefBoxHBox.addWidget(self.opt_overwriteBox)
-        self.vbox.addLayout(self.prefLabelHBox) 
-        self.vbox.addLayout(self.prefBoxHBox) 
-        self.vbox.addSpacing(20)
+        self.vbox.addLayout(self.prefLabelHBox)
+        self.vbox.addLayout(self.prefBoxHBox)
+        self.vbox.addSpacing(10)
         self.vbox.addWidget(self.columnLabel)
         self.vbox.addWidget(self.opt_languageBox)
         self.vbox.addWidget(self.opt_hiBox)
         self.vbox.addWidget(self.opt_ratingBox)
         self.vbox.addWidget(self.opt_countBox)
-        self.vbox.addSpacing(20)
+        self.vbox.addSpacing(10)
         self.vbox.addWidget(self.accountTitle)
         self.vbox.addWidget(self.accountLabel)
         self.haccountbox.addWidget(self.usernameLabel)
         self.haccountbox.addWidget(self.usernameEdit)
         self.haccountbox.addWidget(self.passwordLabel)
         self.haccountbox.addWidget(self.passwordEdit)
-        self.vbox.addLayout(self.haccountbox) 
-        self.vbox.addSpacing(20)
+        self.vbox.addLayout(self.haccountbox)
+        self.vbox.addSpacing(10)
         self.vbox.addWidget(self.helpLabel)
+        self.vbox.addSpacing(10)
         self.vbox.addWidget(self.finishButton)
 
         self.setLayout(self.vbox)
@@ -411,7 +417,7 @@ class subsWindow(QtWidgets.QDialog):
     def __init__(self,parent=None):
         super(subsWindow,self).__init__(parent)
         QtWidgets.QMainWindow.__init__(self)
-        self.setWindowTitle('OpenSubtitlesDownload: Choose you subtitle')
+        self.setWindowTitle('Select a subtitles')
         self.setWindowIcon(QtGui.QIcon.fromTheme("document-properties"))
         self.resize(720, 320)
 
