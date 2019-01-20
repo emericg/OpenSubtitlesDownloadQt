@@ -20,7 +20,7 @@ Features
 --------
 
 - Use a nice Qt5 GUI.
-- Query subtitles in more than 60 different languages for documentaries, movies, TV shows and more...
+- Query subtitles in more than 60 different languages for documentaries, movies, TV shows and more!
 - Query subtitles in multiple languages at once.
 - Query subtitles for multiple video files at once.
 - Detect valid video files (using mime types and file extensions).
@@ -32,9 +32,8 @@ Features
 Requirements
 ------------
 
-- python (version 3 only!)
-- PyQt5
-- common unix tools: wget & gzip (subtitles downloading)
+- Python 3
+- PyQt 5
 
 Installation
 ------------
@@ -67,15 +66,3 @@ License
 
 OpenSubtitlesDownloadQt.py is a free software released under the GPL v3 license <http://www.gnu.org/licenses/gpl-3.0.txt>
 
-Screenshots!
-------------
-
-![Start subtitles search](https://raw.githubusercontent.com/emericg/OpenSubtitlesDownloadQt/screenshots/osd_screenshot_launch.png)
-
-![Download selected subtitles](https://raw.githubusercontent.com/emericg/OpenSubtitlesDownloadQt/screenshots/osd_screenshot_autodownload.png)
-
-Enjoy your subtitled video!
-![Enjoy your subtitled video!](https://raw.githubusercontent.com/emericg/OpenSubtitlesDownloadQt/screenshots/enjoy-sintel.jpg)
-
-What if multiple subtitles are available? Just pick one from the list!
-![Multiple subtitles selection](https://raw.githubusercontent.com/emericg/OpenSubtitlesDownloadQt/screenshots/osd_screenshot_selection.png)
