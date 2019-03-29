@@ -28,6 +28,7 @@
 
 # Contributors / special thanks:
 # LenuX for his work on the Qt GUI
+# Thiago Alvarenga Lechuga <thiagoalz@gmail.com> for his work on the 'Windows CLI' and the 'folder search'
 # jeroenvdw for his work on the 'subtitles automatic selection' and the 'search by filename'
 # Gui13 for his work on the arguments parsing
 # Tomáš Hnyk <tomashnyk@gmail.com> for his work on the 'multiple language' feature
@@ -49,6 +50,8 @@ import struct
 import mimetypes
 import time
 import gzip
+import argparse
+import subprocess
 import urllib.request
 from xmlrpc.client import ServerProxy
 import configparser
@@ -56,6 +59,92 @@ import configparser
 # ==== Opensubtitles.org XML-RPC server= =======================================
 
 osd_server = ServerProxy('http://api.opensubtitles.org/xml-rpc')
+osd_username = ""
+osd_password = ""
+
+# ==== Settings file ===========================================================
+
+confpath = ""
+
+opt_languages = []
+opt_search_overwrite = "on"
+opt_search_mode = "hash_then_filename"
+opt_selection_mode = "manual"
+opt_language_suffix = "auto"
+opt_language_separator = "_"
+opt_display_language = "off"
+opt_display_match = "off"
+opt_display_hi = "off"
+opt_display_rating = "off"
+opt_display_count = "off"
+
+opt_byname = "on" # DEPRECATED
+
+def readSettings():
+    """Read settings from file, or initialize them"""
+
+    # Get options from config file if it exists
+    if os.path.isfile(confpath):
+        confparser = configparser.ConfigParser()
+        confparser.read(confpath)
+
+        languages = ""
+        for i in range(0, len(confparser.items('languages'))):
+            languages += confparser.get('languages', 'sublanguageids' + str(i)) + ","
+
+        opt_languages.clear()
+        opt_languages.append(languages)
+
+        osd_username = confparser.get('settings', 'osd_username')
+        osd_password = confparser.get('settings', 'osd_password')
+        opt_search_overwrite = confparser.get('settings', 'opt_overwrite')
+        opt_search_mode = confparser.get('settings', 'opt_search_mode')
+        opt_selection_mode = confparser.get('settings', 'opt_selection_mode')
+        opt_language_suffix = confparser.get('settings', 'opt_language_suffix')
+        opt_language_separator = confparser.get('settings', 'opt_language_separator')
+        opt_display_language = confparser.get('gui', 'opt_display_language')
+        opt_display_match = confparser.get('gui', 'opt_display_match')
+        opt_display_hi = confparser.get('gui', 'opt_display_hi')
+        opt_display_rating = confparser.get('gui', 'opt_display_rating')
+        opt_display_count = confparser.get('gui', 'opt_display_count')
+
+        return True
+
+    return False
+
+def saveSettings():
+    """Save settings to file"""
+
+    confparser = configparser.ConfigParser()
+    confparser.add_section('languages')
+
+    i = 0
+    for ids in opt_languages:
+        confparser.set ('languages', 'sublanguageids'+str(i), ids)
+        i+=1
+
+    confparser.add_section('settings')
+    confparser.set('settings', 'osd_username', osd_username)
+    confparser.set('settings', 'osd_password', osd_password)
+    confparser.set('settings', 'opt_overwrite', opt_search_overwrite)
+    confparser.set('settings', 'opt_search_mode', str(opt_search_mode))
+    confparser.set('settings', 'opt_selection_mode', str(opt_selection_mode))
+    confparser.set('settings', 'opt_language_suffix', str(opt_language_suffix))
+    confparser.set('settings', 'opt_language_separator', str(opt_language_separator))
+
+    confparser.add_section('gui')
+    confparser.set('gui', 'opt_display_language', str(opt_display_language))
+    confparser.set('gui', 'opt_display_match', str(opt_display_match))
+    confparser.set('gui', 'opt_display_hi', str(opt_display_hi))
+    confparser.set('gui', 'opt_display_rating', str(opt_display_rating))
+    confparser.set('gui', 'opt_display_count', str(opt_display_count))
+
+    if confpath:
+        with open(confpath, 'w') as confile:
+            confparser.write(confile)
+        return True
+
+    return False
 
 # ==== Super Print =============================================================
 # priority: info, warning, error
@@ -63,13 +152,132 @@ osd_server = ServerProxy('http://api.opensubtitles.org/xml-rpc')
 # message: full text, with tags and breaks
 
 def superPrint(priority, title, message):
-    """Print messages through Qt interface"""
+    """Print messages through Qt QMessageBox"""
     message = message.replace("\n", "<br>")
     alert = QtWidgets.QMessageBox()
     alert.setWindowTitle(title)
     alert.setWindowIcon(QtGui.QIcon.fromTheme("document-properties"))
     alert.setText(message)
     alert.exec_()
+
+# ==== Check file path & type ==================================================
+
+def checkFileValidity(path):
+    """Check mimetype and/or file extension to detect valid video file"""
+    if os.path.isfile(path) is False:
+        return False
+
+    fileMimeType, encoding = mimetypes.guess_type(path)
+    if fileMimeType is None:
+        fileExtension = path.rsplit('.', 1)
+        if fileExtension[1] not in ['avi', 'mp4', 'mov', 'mkv', 'mk3d', 'webm', \
+                                    'ts', 'mts', 'm2ts', 'ps', 'vob', 'evo', 'mpeg', 'mpg', \
+                                    'm1v', 'm2p', 'm2v', 'm4v', 'movhd', 'movx', 'qt', \
+                                    'mxf', 'ogg', 'ogm', 'ogv', 'rm', 'rmvb', 'flv', 'swf', \
+                                    'asf', 'wm', 'wmv', 'wmx', 'divx', 'x264', 'xvid']:
+            #superPrint("error", "File type error!", "This file is not a video (unknown mimetype AND invalid file extension):\n<i>" + path + "</i>")
+            return False
+    else:
+        fileMimeType = fileMimeType.split('/', 1)
+        if fileMimeType[0] != 'video':
+            #superPrint("error", "File type error!", "This file is not a video (unknown mimetype):\n<i>" + path + "</i>")
+            return False
+
+    return True
+
+# ==== Check for existing subtitles file =======================================
+
+def checkSubtitlesExists(path):
+    """Check if a subtitles already exists for the current file"""
+
+    for ext in ['srt', 'sub', 'sbv', 'smi', 'ssa', 'ass', 'usf']:
+        subPath = path.rsplit('.', 1)[0] + '.' + ext
+        if os.path.isfile(subPath) is True:
+            superPrint("info", "Subtitles already downloaded!", "A subtitles file already exists for this file:\n<i>" + subPath + "</i>")
+            return True
+        # With language code? Only check the first language (and probably using the wrong language suffix format)
+        if opt_language_suffix in ('on', 'auto'):
+            if len(opt_languages) == 1:
+                splitted_languages_list = opt_languages[0].split(',')
+            else:
+                splitted_languages_list = opt_languages
+            subPath = path.rsplit('.', 1)[0] + opt_language_separator + splitted_languages_list[0] + '.' + ext
+            if os.path.isfile(subPath) is True:
+                superPrint("info", "Subtitles already downloaded!", "A subtitles file already exists for this file:\n<i>" + subPath + "</i>")
+                return True
+
+    return False
+
+# ==== Hashing algorithm =======================================================
+# Info: http://trac.opensubtitles.org/projects/opensubtitles/wiki/HashSourceCodes
+# This particular implementation is coming from SubDownloader: http://subdownloader.net
+
+def hashFile(path):
+    """Produce a hash for a video file: size + 64bit chksum of the first and
+    last 64k (even if they overlap because the file is smaller than 128k)"""
+    try:
+        longlongformat = 'Q' # unsigned long long little endian
+        bytesize = struct.calcsize(longlongformat)
+        format = "<%d%s" % (65536//bytesize, longlongformat)
+
+        f = open(path, "rb")
+
+        filesize = os.fstat(f.fileno()).st_size
+        hash = filesize
+
+        if filesize < 65536 * 2:
+            superPrint("error", "File size error!", "File size error while generating hash for this file:\n<i>" + path + "</i>")
+            return "SizeError"
+
+        buffer = f.read(65536)
+        longlongs = struct.unpack(format, buffer)
+        hash += sum(longlongs)
+
+        f.seek(-65536, os.SEEK_END) # size is always > 131072
+        buffer = f.read(65536)
+        longlongs = struct.unpack(format, buffer)
+        hash += sum(longlongs)
+        hash &= 0xFFFFFFFFFFFFFFFF
+
+        f.close()
+        returnedhash = "%016x" % hash
+        return returnedhash
+
+    except IOError:
+        superPrint("error", "I/O error!", "Input/Output error while generating hash for this file:\n<i>" + path + "</i>")
+        return "IOError"
+
+# ==== Automatic selection mode ================================================
+
+def selectionAuto(subtitlesList):
+    """Automatic subtitles selection using filename match"""
+
+    if len(opt_languages) == 1:
+        splitted_languages_list = list(reversed(opt_languages[0].split(',')))
+    else:
+        splitted_languages_list = opt_languages
+
+    videoFileParts = videoFileName.replace('-', '.').replace(' ', '.').replace('_', '.').lower().split('.')
+    maxScore = -1
+
+    for subtitle in subtitlesList['data']:
+        score = 0
+        # points to respect languages priority
+        score += splitted_languages_list.index(subtitle['SubLanguageID']) * 100
+        # extra point if the sub is found by hash
+        if subtitle['MatchedBy'] == 'moviehash':
+            score += 1
+        # points for filename mach
+        subFileParts = subtitle['SubFileName'].replace('-', '.').replace(' ', '.').replace('_', '.').lower().split('.')
+        for subPart in subFileParts:
+            for filePart in videoFileParts:
+                if subPart == filePart:
+                    score += 1
+        if score > maxScore:
+            maxScore = score
+            subtitlesSelected = subtitle['SubFileName']
+
+    return subtitlesSelected
 
 # ==== Qt Settings Management Window ===========================================
 # If config file does not exists create it, put the default values and print the
@@ -78,13 +286,6 @@ def superPrint(priority, title, message):
 # If config file does exists, parse it and get the values.
 
 subLang=[("Arabic","ara"),("Bengali","ben"),("Cantonese","yue"),("Dutch","nld"),("English","eng"),("Filipino","fil"),("French","fre"),("German","ger"),("Hindi","hin"),("Indonesian","ind"),("Italian","ita"),("Japanese","jpn"),("Korean","kor"),("Mandarin","mdr"),("Persian","per"),("Portuguese","por"),("Russian","rus"),("Spanish","spa"),("Swahili","swa"),("Turkish","tur"),("Vietnamese","vie")]
-global confpath
-global osd_username, osd_password
-global opt_languages, opt_language_suffix, opt_language_separator
-global opt_search_overwrite, opt_search_mode, opt_selection_mode
-global opt_display_language, opt_display_match, opt_display_hi, opt_display_rating, opt_display_count
-
-opt_byname = "on" # DEPRECATED
 
 class settingsWindow(QtWidgets.QDialog):
     def __init__(self,parent=None):
@@ -93,41 +294,8 @@ class settingsWindow(QtWidgets.QDialog):
         self.setWindowTitle('OpenSubtitlesDownloadQt settings panel')
         self.setWindowIcon(QtGui.QIcon.fromTheme("document-properties"))
 
-        opt_languages=[]
-
-        # Get options from config file if it exists, else initialize them:
-        if os.path.isfile(confpath):
-            confparser = configparser.ConfigParser()
-            confparser.read(confpath)
-            languages = ""
-            for i in range(0, len(confparser.items('languages'))):
-                languages += confparser.get('languages', 'sublanguageids'+str(i)) + ","
-            opt_languages.append(languages)
-            osd_username = confparser.get('settings', 'osd_username')
-            osd_password = confparser.get('settings', 'osd_password')
-            opt_search_overwrite = confparser.get('settings', 'opt_overwrite')
-            opt_search_mode = confparser.get('settings', 'opt_search_mode')
-            opt_selection_mode = confparser.get('settings', 'opt_selection_mode')
-            opt_language_suffix = confparser.get('settings', 'opt_language_suffix')
-            opt_language_separator = confparser.get('settings', 'opt_language_separator')
-            opt_display_language = confparser.get('gui', 'opt_display_language')
-            opt_display_match = confparser.get('gui', 'opt_display_match')
-            opt_display_hi = confparser.get('gui', 'opt_display_hi')
-            opt_display_rating = confparser.get('gui', 'opt_display_rating')
-            opt_display_count = confparser.get('gui', 'opt_display_count')
-        else:
-            osd_username = ""
-            osd_password = ""
-            opt_search_overwrite = "on"
-            opt_search_mode = "hash_then_filename"
-            opt_selection_mode = "manual"
-            opt_language_suffix = "auto"
-            opt_language_separator = "_"
-            opt_display_language = ""
-            opt_display_match = ""
-            opt_display_hi = ""
-            opt_display_rating = ""
-            opt_display_count = ""
+        # Read (or init) settings
+        readSettings()
 
         # Create titles font
         titleFont = QtGui.QFont()
@@ -265,7 +433,7 @@ class settingsWindow(QtWidgets.QDialog):
     def doFinish(self):
 
         # Get all the selected languages and construct the IDsList:
-        opt_languages = []
+        opt_languages.clear()
         for i in range(0, len(subLang)):
             if self.pushLang[i].isChecked():
                 opt_languages.append(subLang[i][1])
@@ -296,127 +464,14 @@ class settingsWindow(QtWidgets.QDialog):
             osd_password = self.passwordEdit.text()
 
             # Write the conf file with the parser:
-            confparser = configparser.ConfigParser()
-            confparser.add_section('languages')
-
-            i = 0
-            for ids in opt_languages:
-                confparser.set ('languages', 'sublanguageids'+str(i), ids)
-                i+=1
-
-            confparser.add_section('settings')
-            confparser.set('settings', 'osd_username', osd_username)
-            confparser.set('settings', 'osd_password', osd_password)
-            confparser.set('settings', 'opt_overwrite', opt_search_overwrite)
-            confparser.set('settings', 'opt_search_mode', str(opt_search_mode))
-            confparser.set('settings', 'opt_selection_mode', str(opt_selection_mode))
-            confparser.set('settings', 'opt_language_suffix', str(opt_language_suffix))
-            confparser.set('settings', 'opt_language_separator', str(opt_language_separator))
-
-            confparser.add_section('gui')
-            confparser.set('gui', 'opt_display_language', str(opt_display_language))
-            confparser.set('gui', 'opt_display_match', str(opt_display_match))
-            confparser.set('gui', 'opt_display_hi', str(opt_display_hi))
-            confparser.set('gui', 'opt_display_rating', str(opt_display_rating))
-            confparser.set('gui', 'opt_display_count', str(opt_display_count))
-
-            with open(confpath, 'w') as confile:
-                confparser.write(confile)
+            saveSettings()
 
             # Close the window when its all saved
             self.close()
 
-def configQt():
+def spawnSettingsWindow():
     gui = settingsWindow()
     gui.exec_()
-
-# ==== Check file path & type ==================================================
-
-def checkFileValidity(path):
-    """Check mimetype and/or file extension to detect valid video file"""
-    if os.path.isfile(path) is False:
-        superPrint("error", "File type error!", "This is not a file:\n<i>" + path + "</i>")
-        return False
-
-    fileMimeType, encoding = mimetypes.guess_type(path)
-    if fileMimeType is None:
-        fileExtension = path.rsplit('.', 1)
-        if fileExtension[1] not in ['avi', 'mp4', 'mov', 'mkv', 'mk3d', 'webm', \
-                                    'ts', 'mts', 'm2ts', 'ps', 'vob', 'evo', 'mpeg', 'mpg', \
-                                    'm1v', 'm2p', 'm2v', 'm4v', 'movhd', 'movx', 'qt', \
-                                    'mxf', 'ogg', 'ogm', 'ogv', 'rm', 'rmvb', 'flv', 'swf', \
-                                    'asf', 'wm', 'wmv', 'wmx', 'divx', 'x264', 'xvid']:
-            superPrint("error", "File type error!", "This file is not a video (unknown mimetype AND invalid file extension):\n<i>" + path + "</i>")
-            return False
-    else:
-        fileMimeType = fileMimeType.split('/', 1)
-        if fileMimeType[0] != 'video':
-            superPrint("error", "File type error!", "This file is not a video (unknown mimetype):\n<i>" + path + "</i>")
-            return False
-
-    return True
-
-# ==== Check for existing subtitles file =======================================
-
-def checkSubtitlesExists(path):
-    """Check if a subtitles already exists for the current file"""
-
-    for ext in ['srt', 'sub', 'sbv', 'smi', 'ssa', 'ass', 'usf']:
-        subPath = path.rsplit('.', 1)[0] + '.' + ext
-        if os.path.isfile(subPath) is True:
-            superPrint("info", "Subtitles already downloaded!", "A subtitles file already exists for this file:\n<i>" + subPath + "</i>")
-            return True
-        # With language code? Only check the first language (and probably using the wrong language suffix format)
-        if opt_language_suffix in ('on', 'auto'):
-            if len(opt_languages) == 1:
-                splitted_languages_list = opt_languages[0].split(',')
-            else:
-                splitted_languages_list = opt_languages
-            subPath = path.rsplit('.', 1)[0] + opt_language_separator + splitted_languages_list[0] + '.' + ext
-            if os.path.isfile(subPath) is True:
-                superPrint("info", "Subtitles already downloaded!", "A subtitles file already exists for this file:\n<i>" + subPath + "</i>")
-                return True
-
-    return False
-
-# ==== Hashing algorithm =======================================================
-# Info: http://trac.opensubtitles.org/projects/opensubtitles/wiki/HashSourceCodes
-# This particular implementation is coming from SubDownloader: http://subdownloader.net
-
-def hashFile(path):
-    """Produce a hash for a video file: size + 64bit chksum of the first and
-    last 64k (even if they overlap because the file is smaller than 128k)"""
-    try:
-        longlongformat = 'Q' # unsigned long long little endian
-        bytesize = struct.calcsize(longlongformat)
-        format = "<%d%s" % (65536//bytesize, longlongformat)
-
-        f = open(path, "rb")
-
-        filesize = os.fstat(f.fileno()).st_size
-        hash = filesize
-
-        if filesize < 65536 * 2:
-            superPrint("error", "File size error!", "File size error while generating hash for this file:\n<i>" + path + "</i>")
-            return "SizeError"
-
-        buffer = f.read(65536)
-        longlongs = struct.unpack(format, buffer)
-        hash += sum(longlongs)
-
-        f.seek(-65536, os.SEEK_END) # size is always > 131072
-        buffer = f.read(65536)
-        longlongs = struct.unpack(format, buffer)
-        hash += sum(longlongs)
-        hash &= 0xFFFFFFFFFFFFFFFF
-
-        f.close()
-        returnedhash = "%016x" % hash
-        return returnedhash
-
-    except IOError:
-        superPrint("error", "I/O error!", "Input/Output error while generating hash for this file:\n<i>" + path + "</i>")
-        return "IOError"
 
 # ==== Qt subs window: Cross platform subtitles selection window ===============
 
@@ -560,7 +615,7 @@ class subsWindow(QtWidgets.QDialog):
         self.close()
 
     def doConfig(self):
-        configQt()
+        spawnSettingsWindow()
 
     def keyPressEvent(self, event): # Handle enter and escape buttons
         if event.key() == QtCore.Qt.Key_Return:
@@ -576,7 +631,6 @@ def selectionQt(subtitlesList):
     gui = subsWindow()
     gui.exec_()
     return gui.selectedSub
-
 
 # ==== Qt download window, thread and function =================================
 
@@ -630,29 +684,6 @@ def downloadQt(subtitleURL,subtitlePath):
     else:
         return 1
 
-# ==== Automatic selection mode ================================================
-
-def selectionAuto(subtitlesList):
-    """Automatic subtitles selection using filename match"""
-
-    videoFileParts = videoFileName.replace('-','.').replace(' ','.').replace('_','.').lower().split('.')
-    maxScore = -1
-
-    for subtitle in subtitlesList['data']:
-        subFileParts = subtitle['SubFileName'].replace('-','.').replace(' ','.').replace('_','.').lower().split('.');
-        score = 0
-        if subtitle['MatchedBy'] == 'moviehash':
-            score = score + 1 # extra point if the sub is found by hash, which is the preferred way to find subs
-        for subPart in subFileParts:
-            for filePart in videoFileParts:
-                if subPart == filePart:
-                    score = score + 1
-        if score > maxScore:
-            maxScore = score
-            subtitlesSelected = subtitle['SubFileName']
-
-    return subtitlesSelected
-
 # ==== Exit codes ==============================================================
 
 # Exit code returned by the software. You can use them to improve scripting behaviours.
@@ -667,93 +698,127 @@ ExitCode = 2
 
 Application = QtWidgets.QApplication(sys.argv)
 
+# ==== Choose a conf file and launch configuration window if it does not exists
+if os.getenv("XDG_CONFIG_HOME"):
+    confdir = os.path.join(os.getenv("XDG_CONFIG_HOME"), "OpenSubtitlesDownload")
+    confpath = os.path.join(confdir, "OpenSubtitlesDownload.conf")
+else:
+    confdir = os.path.join(os.getenv("HOME"), ".config/OpenSubtitlesDownload/")
+    confpath = os.path.join(confdir, "OpenSubtitlesDownload.conf")
+
+if not os.path.isfile(confpath): # Config file not found, call config window
+    try:
+        os.stat(confdir)
+    except:
+        os.mkdir(confdir) # Create the conf folder if it doesn't exists
+
+    spawnSettingsWindow()
+
+    if not os.path.isfile(confpath): # Config file not created -> exit
+        sys.exit(ExitCode)
+else:
+    # Load settings
+    readSettings()
+
+# ==== Argument parsing
+
 # Get OpenSubtitlesDownloadQt.py script path
-execPath = str(sys.argv[0])
+execPath = sys.executable
+scriptPath = str(sys.argv[0])
+
+# Setup ArgumentParser
+parser = argparse.ArgumentParser(prog='OpenSubtitlesDownloadQt.py',
+                                 description='This software is designed to help you find and download subtitles for your favorite videos!',
+                                 formatter_class=argparse.RawTextHelpFormatter)
+
+parser.add_argument('-s', '--search', help="Search mode: hash, filename, hash_then_filename, hash_and_filename (default: hash_then_filename)")
+parser.add_argument('-t', '--select', help="Selection mode: manual, default, auto")
+parser.add_argument('-a', '--auto', help="Force automatic selection and download of the best subtitles found", action='store_true')
+parser.add_argument('-l', '--lang', help="Specify the language in which the subtitles should be downloaded (default: eng).\nSyntax:\n-l eng,fre: search in both language\n-l eng -l fre: download both language", nargs='?', action='append')
+
+parser.add_argument('filePathListArg', help="The video file(s) for which subtitles should be searched and downloaded", nargs='+')
+
+# Only use ArgumentParser if we have arguments...
+if len(sys.argv) > 1:
+    result = parser.parse_args()
 
 # ==== Get valid video paths
+
 videoPathList = []
 
-# No filePathListArg from the arg parser? Try selected file(s) from nautilus environment variables:
-# $NAUTILUS_SCRIPT_SELECTED_FILE_PATHS (only for local storage)
-# $NAUTILUS_SCRIPT_SELECTED_URIS
-# Try to get file(s) provided by nautilus
-filePathListEnv = os.environ.get('NAUTILUS_SCRIPT_SELECTED_URIS')
+if 'result' in locals():
+    # Go through the paths taken from arguments, and extract only valid video paths
+    for i in result.filePathListArg:
+        filePath = os.path.abspath(i)
+        if os.path.isdir(filePath):
+            # If it is a folder, check all of its files
+            for item in os.listdir(filePath):
+                localPath = os.path.join(filePath, item)
+                if checkFileValidity(localPath):
+                    videoPathList.append(localPath)
+        elif checkFileValidity(filePath):
+            # If it is a valid file, use it
+            videoPathList.append(filePath)
+else:
+    superPrint("error", "No file provided!", "No file provided!")
+    sys.exit(2)
+
+# ==== Instances dispatcher
+
+# If videoPathList is empty, abort!
+if len(videoPathList) == 0:
+    parser.print_help()
+    sys.exit(1)
+
+# Check if the subtitles exists videoPathList
+if opt_search_overwrite == 'off':
+    videoPathList = [path for path in videoPathList if not checkSubtitlesExists(path)]
+
+    # If videoPathList is empty, exit!
+    if len(videoPathList) == 0:
+        sys.exit(1)
+
+# The first video file will be processed by this instance
+videoPath = videoPathList[0]
+videoPathList.pop(0)
+
+# The remaining file(s) are dispatched to new instance(s) of this script
+for videoPathDispatch in videoPathList:
+
+    # Handle current options
+    command = sys.executable + " " + scriptPath + " -s " + opt_search_mode + " -t " + opt_selection_mode
+    if not (len(opt_languages) == 1 and opt_languages[0] == 'eng'):
+        for resultlangs in opt_languages:
+            command += " -l " + resultlangs
+
+    # Split command string
+    command_splitted = command.split()
+    # The videoPath filename can contain spaces, but we do not want to split that, so add it right after the split
+    command_splitted.append(videoPathDispatch)
+
+    # Asynchronous dispatch
+    process_videoDispatched = subprocess.Popen(command_splitted)
+
+    # Do not spawn too many instances at the same time
+    time.sleep(0.33)
+
+# The first video file will be processed by this instance
+videoPathList.clear()
+videoPathList.append(videoPath)
+
+# ==== Search and download subtitles ===========================================
 
 try:
-    if filePathListEnv != None:
-        # Check file(s) type and validity
-        for filePath in filePathListEnv.splitlines():
-            # Work a little bit of magic (Make sure we have a clean and absolute path, even from an URI)
-            filePath = os.path.abspath(os.path.basename(filePath))
-            filePath = urllib.request.url2pathname(filePath)
-            if checkFileValidity(filePath):
-                videoPathList.append(filePath)
-
-        # If videoPathList is empty, exit!
-        if len(videoPathList) == 0:
-            sys.exit(1)
-
-    # ==== Choose a conf file and launch configuration window if it does not exists
-    if os.getenv("XDG_CONFIG_HOME"):
-        confdir = os.path.join(os.getenv("XDG_CONFIG_HOME"), "OpenSubtitlesDownload")
-        confpath = os.path.join(confdir, "OpenSubtitlesDownload.conf")
-    else:
-        confdir = os.path.join(os.getenv("HOME"), ".config/OpenSubtitlesDownload/")
-        confpath = os.path.join(confdir, "OpenSubtitlesDownload.conf")
-
-    if not os.path.isfile(confpath):  # Config file not found, call config window
-        try:
-            os.stat(confdir)
-        except:
-            os.mkdir(confdir)    # Create the conf folder if it doesn't exists
-
-        configQt()
-
-    if not os.path.isfile(confpath):  # Config file not created -> exit
-        sys.exit(ExitCode)
-
-    confparser = configparser.ConfigParser()
-    confparser.read(confpath)
-
-    opt_languages=[]
-    languages = ""
-    for i in range(0, len(confparser.items('languages'))):
-        languages += confparser.get('languages', 'sublanguageids'+str(i)) + ","
-    opt_languages.append(languages)
-
-    osd_username = confparser.get('settings', 'osd_username')
-    osd_password = confparser.get('settings', 'osd_password')
-    opt_search_overwrite = confparser.get('settings', 'opt_overwrite')
-    opt_search_mode = confparser.get('settings', 'opt_search_mode')
-    opt_selection_mode = confparser.get('settings', 'opt_selection_mode')
-    opt_language_suffix = confparser.get('settings', 'opt_language_suffix')
-    opt_language_separator = confparser.get('settings', 'opt_language_separator')
-
-    opt_display_language = confparser.get('gui', 'opt_display_language')
-    opt_display_match = confparser.get('gui', 'opt_display_match')
-    opt_display_hi = confparser.get('gui', 'opt_display_hi')
-    opt_display_rating = confparser.get('gui', 'opt_display_rating')
-    opt_display_count = confparser.get('gui', 'opt_display_count')
-
-    # Check if the subtitles exists videoPathList
-    if opt_search_overwrite == 'off':
-        for videoPathDispatch in videoPathList:
-            if checkSubtitlesExists(videoPathDispatch) == True:
-                videoPathList.remove(videoPathDispatch)
-
     # ==== Connection
     try:
-        # Connection to opensubtitles.org server
         session = osd_server.LogIn(osd_username, osd_password, "en", 'opensubtitles-download 5.0')
     except Exception:
         # Retry once, it could be a momentary overloaded server?
         time.sleep(3)
         try:
-            # Connection to opensubtitles.org server
             session = osd_server.LogIn(osd_username, osd_password, "en", 'opensubtitles-download 5.0')
         except Exception:
-            # Failed connection attempts?
-            superPrint("error", "Connection error!", "Unable to reach opensubtitles.org servers!\n\nPlease check:\n- Your Internet connection status\n- www.opensubtitles.org availability\n- Your downloads limit (200 subtitles per 24h)\nThe subtitles search and download service is powered by opensubtitles.org. Be sure to donate if you appreciate the service provided!")
+            superPrint("error", "Connection error!", "Unable to reach opensubtitles.org servers!\n\nPlease check:\n- Your Internet connection status\n- www.opensubtitles.org availability\n- Your downloads limit (200 subtitles per 24h)\n\nThe subtitles search and download service is powered by opensubtitles.org. Be sure to donate if you appreciate the service provided!")
             sys.exit(2)
 
     # Connection refused?
