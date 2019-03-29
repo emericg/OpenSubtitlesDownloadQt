@@ -78,48 +78,56 @@ def superPrint(priority, title, message):
 # If config file does exists, parse it and get the values.
 
 subLang=[("Arabic","ara"),("Bengali","ben"),("Cantonese","yue"),("Dutch","nld"),("English","eng"),("Filipino","fil"),("French","fre"),("German","ger"),("Hindi","hin"),("Indonesian","ind"),("Italian","ita"),("Japanese","jpn"),("Korean","kor"),("Mandarin","mdr"),("Persian","per"),("Portuguese","por"),("Russian","rus"),("Spanish","spa"),("Swahili","swa"),("Turkish","tur"),("Vietnamese","vie")]
-global opt_languages,opt_language_suffix, opt_search_mode, opt_language, opt_hi, opt_rating, opt_count, opt_byname, opt_overwrite
-global confpath, osd_username, osd_password
+global confpath
+global osd_username, osd_password
+global opt_languages, opt_language_suffix, opt_language_separator
+global opt_search_overwrite, opt_search_mode, opt_selection_mode
+global opt_display_language, opt_display_match, opt_display_hi, opt_display_rating, opt_display_count
+
+opt_byname = "on" # DEPRECATED
 
 class settingsWindow(QtWidgets.QDialog):
-
     def __init__(self,parent=None):
         super(settingsWindow,self).__init__(parent)
         QtWidgets.QMainWindow.__init__(self)
         self.setWindowTitle('OpenSubtitlesDownloadQt settings panel')
         self.setWindowIcon(QtGui.QIcon.fromTheme("document-properties"))
 
+        opt_languages=[]
+
         # Get options from config file if it exists, else initialize them:
         if os.path.isfile(confpath):
             confparser = configparser.ConfigParser()
             confparser.read(confpath)
-            opt_languages=[]
             languages = ""
-            for i in range(0,len(confparser.items('languagesIDs'))):
-                languages += confparser.get('languagesIDs', 'sublanguageids'+str(i)) + ","
+            for i in range(0, len(confparser.items('languages'))):
+                languages += confparser.get('languages', 'sublanguageids'+str(i)) + ","
             opt_languages.append(languages)
-            opt_language_suffix = confparser.get('settings', 'opt_language_suffix')
-            opt_search_mode = confparser.get('settings', 'opt_search_mode')
-            opt_language = confparser.get('settings', 'opt_language')
-            opt_hi = confparser.get('settings', 'opt_hi')
-            opt_rating = confparser.get('settings', 'opt_rating')
-            opt_count = confparser.get('settings', 'opt_count')
             osd_username = confparser.get('settings', 'osd_username')
             osd_password = confparser.get('settings', 'osd_password')
-            opt_byname = confparser.get('settings', 'opt_byname')
-            opt_overwrite = confparser.get('settings', 'opt_overwrite')
+            opt_search_overwrite = confparser.get('settings', 'opt_overwrite')
+            opt_search_mode = confparser.get('settings', 'opt_search_mode')
+            opt_selection_mode = confparser.get('settings', 'opt_selection_mode')
+            opt_language_suffix = confparser.get('settings', 'opt_language_suffix')
+            opt_language_separator = confparser.get('settings', 'opt_language_separator')
+            opt_display_language = confparser.get('gui', 'opt_display_language')
+            opt_display_match = confparser.get('gui', 'opt_display_match')
+            opt_display_hi = confparser.get('gui', 'opt_display_hi')
+            opt_display_rating = confparser.get('gui', 'opt_display_rating')
+            opt_display_count = confparser.get('gui', 'opt_display_count')
         else:
-            opt_languages=[]
-            opt_language_suffix = "auto"
-            opt_search_mode = "manual"
-            opt_language = ""
-            opt_hi = ""
-            opt_rating = ""
-            opt_count = ""
             osd_username = ""
             osd_password = ""
-            opt_byname = "on"
-            opt_overwrite = "on"
+            opt_search_overwrite = "on"
+            opt_search_mode = "hash_then_filename"
+            opt_selection_mode = "manual"
+            opt_language_suffix = "auto"
+            opt_language_separator = "_"
+            opt_display_language = ""
+            opt_display_match = ""
+            opt_display_hi = ""
+            opt_display_rating = ""
+            opt_display_count = ""
 
         # Create titles font
         titleFont = QtGui.QFont()
@@ -147,25 +155,25 @@ class settingsWindow(QtWidgets.QDialog):
         self.opt_modeBox = QtWidgets.QComboBox()
         self.opt_modeBox.setMinimumWidth(100)
         self.opt_modeBox.addItems(['manual','auto'])
-        self.opt_modeBox.setCurrentIndex(self.opt_modeBox.findText(opt_search_mode, QtCore.Qt.MatchFixedString))
+        self.opt_modeBox.setCurrentIndex(self.opt_modeBox.findText(opt_selection_mode, QtCore.Qt.MatchFixedString))
         self.overwriteLabel = QtWidgets.QLabel("Overwite existing subtitle:")
         self.opt_overwriteBox = QtWidgets.QComboBox()
         self.opt_overwriteBox.setMinimumWidth(100)
         self.opt_overwriteBox.addItems(['on','off'])
-        self.opt_overwriteBox.setCurrentIndex(self.opt_overwriteBox.findText(opt_overwrite, QtCore.Qt.MatchFixedString))
+        self.opt_overwriteBox.setCurrentIndex(self.opt_overwriteBox.findText(opt_search_overwrite, QtCore.Qt.MatchFixedString))
 
         # Columns in selection window (checkboxes)
         self.columnLabel = QtWidgets.QLabel("3/ Select the colums to show in the selection window:")
         self.columnLabel.setFont(titleFont)
 
         self.opt_languageBox = QtWidgets.QCheckBox("Subtitles language")
-        if opt_language == "on": self.opt_languageBox.setChecked(True)
+        if opt_display_language == "on": self.opt_languageBox.setChecked(True)
         self.opt_hiBox = QtWidgets.QCheckBox("Hearing impaired version")
-        if opt_hi == "on": self.opt_hiBox.setChecked(True)
+        if opt_display_hi == "on": self.opt_hiBox.setChecked(True)
         self.opt_ratingBox = QtWidgets.QCheckBox("Users rating")
-        if opt_rating == "on": self.opt_ratingBox.setChecked(True)
+        if opt_display_rating == "on": self.opt_ratingBox.setChecked(True)
         self.opt_countBox = QtWidgets.QCheckBox("Downloads count")
-        if opt_count == "on": self.opt_countBox.setChecked(True)
+        if opt_display_count == "on": self.opt_countBox.setChecked(True)
 
         # OSD user account
         self.accountTitle = QtWidgets.QLabel("4/ Opensubtitles.org account:")
@@ -265,22 +273,23 @@ class settingsWindow(QtWidgets.QDialog):
         if len(opt_languages) == 0:
             superPrint(self,self.windowTitle(),"Cannot save with those settings: choose at least one language please")
         else:
-
             # Get the values of the comboboxes:
             opt_language_suffix = self.opt_suffixBox.currentText()
-            opt_search_mode = self.opt_modeBox.currentText()
-            opt_byname = self.opt_bynameBox.currentText()
-            opt_overwrite = self.opt_overwriteBox.currentText()
+            opt_language_separator = "_" #self.opt_separatorBox.currentText()
+            opt_search_overwrite = self.opt_overwriteBox.currentText()
+            opt_search_mode = "hash_then_filename" #self.opt_searchModeBox.currentText()
+            opt_selection_mode = self.opt_modeBox.currentText()
 
             # Same for the checkboxes:
-            opt_language='off'
-            opt_hi='off'
-            opt_rating='off'
-            opt_count='off'
-            if self.opt_languageBox.isChecked(): opt_language='on'
-            if self.opt_hiBox.isChecked(): opt_hi='on'
-            if self.opt_ratingBox.isChecked(): opt_rating='on'
-            if self.opt_countBox.isChecked(): opt_count='on'
+            opt_display_language='off'
+            opt_display_match='off'
+            opt_display_hi='off'
+            opt_display_rating='off'
+            opt_display_count='off'
+            if self.opt_languageBox.isChecked(): opt_display_language='on'
+            if self.opt_hiBox.isChecked(): opt_display_hi='on'
+            if self.opt_ratingBox.isChecked(): opt_display_rating='on'
+            if self.opt_countBox.isChecked(): opt_display_count='on'
 
             # Get the account:
             osd_username = self.usernameEdit.text()
@@ -288,24 +297,28 @@ class settingsWindow(QtWidgets.QDialog):
 
             # Write the conf file with the parser:
             confparser = configparser.ConfigParser()
-            confparser.add_section('languagesIDs')
+            confparser.add_section('languages')
 
             i = 0
             for ids in opt_languages:
-                confparser.set ('languagesIDs', 'sublanguageids'+str(i),ids)
+                confparser.set ('languages', 'sublanguageids'+str(i), ids)
                 i+=1
 
             confparser.add_section('settings')
-            confparser.set('settings', 'opt_language_suffix', str(opt_language_suffix))
-            confparser.set('settings', 'opt_search_mode', str(opt_search_mode))
-            confparser.set('settings', 'opt_language', str(opt_language))
-            confparser.set('settings', 'opt_hi', str(opt_hi))
-            confparser.set('settings', 'opt_rating', str(opt_rating))
-            confparser.set('settings', 'opt_count', str(opt_count))
             confparser.set('settings', 'osd_username', osd_username)
             confparser.set('settings', 'osd_password', osd_password)
-            confparser.set('settings', 'opt_byname', opt_byname)
-            confparser.set('settings', 'opt_overwrite', opt_overwrite)
+            confparser.set('settings', 'opt_overwrite', opt_search_overwrite)
+            confparser.set('settings', 'opt_search_mode', str(opt_search_mode))
+            confparser.set('settings', 'opt_selection_mode', str(opt_selection_mode))
+            confparser.set('settings', 'opt_language_suffix', str(opt_language_suffix))
+            confparser.set('settings', 'opt_language_separator', str(opt_language_separator))
+
+            confparser.add_section('gui')
+            confparser.set('gui', 'opt_display_language', str(opt_display_language))
+            confparser.set('gui', 'opt_display_match', str(opt_display_match))
+            confparser.set('gui', 'opt_display_hi', str(opt_display_hi))
+            confparser.set('gui', 'opt_display_rating', str(opt_display_rating))
+            confparser.set('gui', 'opt_display_count', str(opt_display_count))
 
             with open(confpath, 'w') as confile:
                 confparser.write(confile)
@@ -321,12 +334,12 @@ def configQt():
 
 def checkFileValidity(path):
     """Check mimetype and/or file extension to detect valid video file"""
-    if os.path.isfile(path) == False:
+    if os.path.isfile(path) is False:
         superPrint("error", "File type error!", "This is not a file:\n<i>" + path + "</i>")
         return False
 
     fileMimeType, encoding = mimetypes.guess_type(path)
-    if fileMimeType == None:
+    if fileMimeType is None:
         fileExtension = path.rsplit('.', 1)
         if fileExtension[1] not in ['avi', 'mp4', 'mov', 'mkv', 'mk3d', 'webm', \
                                     'ts', 'mts', 'm2ts', 'ps', 'vob', 'evo', 'mpeg', 'mpg', \
@@ -350,17 +363,17 @@ def checkSubtitlesExists(path):
 
     for ext in ['srt', 'sub', 'sbv', 'smi', 'ssa', 'ass', 'usf']:
         subPath = path.rsplit('.', 1)[0] + '.' + ext
-        if os.path.isfile(subPath) == True:
+        if os.path.isfile(subPath) is True:
             superPrint("info", "Subtitles already downloaded!", "A subtitles file already exists for this file:\n<i>" + subPath + "</i>")
             return True
         # With language code? Only check the first language (and probably using the wrong language suffix format)
-        if ((opt_language_suffix == 'on') or (opt_language_suffix == 'auto')):
+        if opt_language_suffix in ('on', 'auto'):
             if len(opt_languages) == 1:
                 splitted_languages_list = opt_languages[0].split(',')
             else:
                 splitted_languages_list = opt_languages
-            subPath = path.rsplit('.', 1)[0] + "_" + splitted_languages_list[0] + '.' + ext
-            if os.path.isfile(subPath) == True:
+            subPath = path.rsplit('.', 1)[0] + opt_language_separator + splitted_languages_list[0] + '.' + ext
+            if os.path.isfile(subPath) is True:
                 superPrint("info", "Subtitles already downloaded!", "A subtitles file already exists for this file:\n<i>" + subPath + "</i>")
                 return True
 
@@ -447,19 +460,19 @@ class subsWindow(QtWidgets.QDialog):
         self.colCount = 1
 
         # Build the colums an their labels, depending on the user's choices
-        if opt_language == "on":
+        if opt_display_language == "on":
             self.hLabels += ";Language"
             self.colCount += 1
 
-        if opt_hi == "on":
+        if opt_display_hi == "on":
             self.hLabels += ";HI"
             self.colCount += 1
 
-        if opt_rating == "on":
+        if opt_display_rating == "on":
             self.hLabels += ";Rating"
             self.colCount += 1
 
-        if opt_count == "on":
+        if opt_display_count == "on":
             self.hLabels += ";Downloads"
             self.colCount += 1
 
@@ -474,38 +487,38 @@ class subsWindow(QtWidgets.QDialog):
             colIndex = 0
             item = QtWidgets.QTableWidgetItem(sub['SubFileName'])
             item.setFlags(QtCore.Qt.ItemIsEnabled|QtCore.Qt.ItemIsSelectable)  # Flags to disable editing of the cells
-            self.subTable.setItem(rowIndex,colIndex, item)
+            self.subTable.setItem(rowIndex, colIndex, item)
             self.subTable.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch) # Stretch the first column
 
-            if opt_language == "on":
+            if opt_display_language == "on":
                 colIndex += 1
                 item = QtWidgets.QTableWidgetItem(sub['LanguageName'])
                 item.setTextAlignment(0x0084) # Center the content of the cell
                 item.setFlags(QtCore.Qt.ItemIsEnabled|QtCore.Qt.ItemIsSelectable)
-                self.subTable.setItem(rowIndex,colIndex, item)
+                self.subTable.setItem(rowIndex, colIndex, item)
 
-            if opt_hi == 'on':
+            if opt_display_hi == 'on':
                 colIndex += 1
                 if sub['SubHearingImpaired'] == '1':
                     item = QtWidgets.QTableWidgetItem(u'\u2713')
-                    self.subTable.setItem(rowIndex,colIndex, item)
+                    self.subTable.setItem(rowIndex, colIndex, item)
                 item.setTextAlignment(0x0084)
                 item.setFlags(QtCore.Qt.ItemIsEnabled|QtCore.Qt.ItemIsSelectable)
 
-            if opt_rating == "on":
+            if opt_display_rating == "on":
                 colIndex += 1
                 item = QtWidgets.QTableWidgetItem(sub['SubRating'])
                 item.setTextAlignment(0x0084)
                 item.setFlags(QtCore.Qt.ItemIsEnabled)
                 item.setFlags(QtCore.Qt.ItemIsEnabled|QtCore.Qt.ItemIsSelectable)
-                self.subTable.setItem(rowIndex,colIndex, item)
+                self.subTable.setItem(rowIndex, colIndex, item)
 
-            if opt_count == "on":
+            if opt_display_count == "on":
                 colIndex += 1
                 item = QtWidgets.QTableWidgetItem(sub['SubDownloadsCnt'])
                 item.setTextAlignment(0x0084)
                 item.setFlags(QtCore.Qt.ItemIsEnabled|QtCore.Qt.ItemIsSelectable)
-                self.subTable.setItem(rowIndex,colIndex, item)
+                self.subTable.setItem(rowIndex, colIndex, item)
 
             rowIndex += 1 # Next row
         self.subTable.selectRow(0) # select the first row by default
@@ -640,7 +653,6 @@ def selectionAuto(subtitlesList):
 
     return subtitlesSelected
 
-
 # ==== Exit codes ==============================================================
 
 # Exit code returned by the software. You can use them to improve scripting behaviours.
@@ -702,24 +714,29 @@ try:
 
     confparser = configparser.ConfigParser()
     confparser.read(confpath)
+
     opt_languages=[]
     languages = ""
-    for i in range(0,len(confparser.items('languagesIDs'))):
-        languages += confparser.get('languagesIDs', 'sublanguageids'+str(i)) + ","
+    for i in range(0, len(confparser.items('languages'))):
+        languages += confparser.get('languages', 'sublanguageids'+str(i)) + ","
     opt_languages.append(languages)
-    opt_language_suffix = confparser.get('settings', 'opt_language_suffix')
-    opt_search_mode = confparser.get('settings', 'opt_search_mode')
-    opt_language = confparser.get('settings', 'opt_language')
-    opt_hi = confparser.get('settings', 'opt_hi')
-    opt_rating = confparser.get('settings', 'opt_rating')
-    opt_count = confparser.get('settings', 'opt_count')
+
     osd_username = confparser.get('settings', 'osd_username')
     osd_password = confparser.get('settings', 'osd_password')
-    opt_byname = confparser.get('settings', 'opt_byname')
-    opt_overwrite = confparser.get('settings', 'opt_overwrite')
+    opt_search_overwrite = confparser.get('settings', 'opt_overwrite')
+    opt_search_mode = confparser.get('settings', 'opt_search_mode')
+    opt_selection_mode = confparser.get('settings', 'opt_selection_mode')
+    opt_language_suffix = confparser.get('settings', 'opt_language_suffix')
+    opt_language_separator = confparser.get('settings', 'opt_language_separator')
+
+    opt_display_language = confparser.get('gui', 'opt_display_language')
+    opt_display_match = confparser.get('gui', 'opt_display_match')
+    opt_display_hi = confparser.get('gui', 'opt_display_hi')
+    opt_display_rating = confparser.get('gui', 'opt_display_rating')
+    opt_display_count = confparser.get('gui', 'opt_display_count')
 
     # Check if the subtitles exists videoPathList
-    if opt_overwrite == 'off':
+    if opt_search_overwrite == 'off':
         for videoPathDispatch in videoPathList:
             if checkSubtitlesExists(videoPathDispatch) == True:
                 videoPathList.remove(videoPathDispatch)
@@ -812,26 +829,26 @@ try:
                 videoFileName = videoFileName.replace('`', '\`')
                 videoFileName = videoFileName.replace("&", "&amp;")
 
-                # If there is more than one subtitles and opt_search_mode != 'auto',
+                # If there is more than one subtitles and opt_selection_mode != 'auto',
                 # then let the user decide which one will be downloaded
                 if subtitlesSelected == '':
                     # Automatic subtitles selection?
-                    if opt_search_mode == 'auto':
+                    if opt_selection_mode == 'auto':
                         subtitlesSelected = selectionAuto(subtitlesList)
                     else:
                         # Go through the list of subtitles and handle 'auto' settings activation
                         for item in subtitlesList['data']:
-                            if opt_language == 'auto':
+                            if opt_display_language == 'auto':
                                 if searchLanguage > 1:
-                                    opt_language = 'on'
-                            if opt_hi == 'auto':
+                                    opt_display_language = 'on'
+                            if opt_display_hi == 'auto':
                                 if item['SubHearingImpaired'] == '1':
-                                    opt_hi = 'on'
-                            if opt_rating == 'auto':
+                                    opt_display_hi = 'on'
+                            if opt_display_rating == 'auto':
                                 if item['SubRating'] != '0.0':
-                                    opt_rating = 'on'
-                            if opt_count == 'auto':
-                                opt_count = 'on'
+                                    opt_display_rating = 'on'
+                            if opt_display_count == 'auto':
+                                opt_display_count = 'on'
 
                         # Spawn selection window:
                         subtitlesSelected = selectionQt(subtitlesList)
