@@ -53,15 +53,9 @@ import urllib.request
 from xmlrpc.client import ServerProxy
 import configparser
 
-# ==== Opensubtitles.org server settings =======================================
+# ==== Opensubtitles.org XML-RPC server= =======================================
 
-# XML-RPC server domain for opensubtitles.org:
 osd_server = ServerProxy('http://api.opensubtitles.org/xml-rpc')
-
-# ==== Exit codes ==============================================================
-# 0: Success and subtitles downloaded
-# 1: Success but no subtitles found
-# 2: Failure
 
 # ==== Super Print =============================================================
 # priority: info, warning, error
@@ -374,7 +368,7 @@ def checkSubtitlesExists(path):
 
 # ==== Hashing algorithm =======================================================
 # Info: http://trac.opensubtitles.org/projects/opensubtitles/wiki/HashSourceCodes
-# This particular implementation is coming from SubDownloader: http://subdownloader.net/
+# This particular implementation is coming from SubDownloader: http://subdownloader.net
 
 def hashFile(path):
     """Produce a hash for a video file: size + 64bit chksum of the first and
@@ -417,11 +411,11 @@ class subsWindow(QtWidgets.QDialog):
     def __init__(self,parent=None):
         super(subsWindow,self).__init__(parent)
         QtWidgets.QMainWindow.__init__(self)
-        self.setWindowTitle('Select a subtitles')
+        self.setWindowTitle('Subtitles available!')
         self.setWindowIcon(QtGui.QIcon.fromTheme("document-properties"))
         self.resize(720, 320)
 
-        self.vBox = QtWidgets.QVBoxLayout()    # Main vertical layout
+        self.vBox = QtWidgets.QVBoxLayout() # Main vertical layout
 
         # Title and filename of the video , each in a horizontal layout
         labelFont = QtGui.QFont()
@@ -519,9 +513,9 @@ class subsWindow(QtWidgets.QDialog):
         # Create the buttons and connect them to the right function
         self.settingsButton = QtWidgets.QPushButton("Settings",self)
         self.settingsButton.clicked.connect(self.doConfig)
-        self.cancelButton = QtWidgets.QPushButton("Cancel",self)
+        self.cancelButton = QtWidgets.QPushButton("Quit",self)
         self.cancelButton.clicked.connect(self.doCancel)
-        self.okButton = QtWidgets.QPushButton("Accept",self)
+        self.okButton = QtWidgets.QPushButton("Download",self)
         self.okButton.setDefault(True)
         self.okButton.clicked.connect(self.doAccept)
 
@@ -542,7 +536,7 @@ class subsWindow(QtWidgets.QDialog):
         self.vBox.addLayout(self.buttonHBox)
         self.setLayout(self.vBox)
 
-        self.next = False
+        self.next = False # Variable to know if we continue the script after this window
 
     def doCancel(self):
         sys.exit(0)
@@ -647,10 +641,18 @@ def selectionAuto(subtitlesList):
     return subtitlesSelected
 
 
+# ==== Exit codes ==============================================================
+
+# Exit code returned by the software. You can use them to improve scripting behaviours.
+# 0: Success, and subtitles downloaded
+# 1: Success, but no subtitles found
+# 2: Failure
+
+ExitCode = 2
+
 # ==== Main program (execution starts here) ====================================
 # ==============================================================================
 
-ExitCode = 2
 Application = QtWidgets.QApplication(sys.argv)
 
 # Get OpenSubtitlesDownloadQt.py script path
@@ -739,7 +741,7 @@ try:
 
     # Connection refused?
     if session['status'] != '200 OK':
-        superPrint("error", "Connection error!", "Opensubtitles.org servers refused the connection: " + session['status'] + ".\n\nPlease check:\n- Your Internet connection status\n- www.opensubtitles.org availability\n- Your 200 downloads per 24h limit")
+        superPrint("error", "Connection error!", "Opensubtitles.org servers refused the connection: " + session['status'] + ".\n\nPlease check:\n- Your Internet connection status\n- www.opensubtitles.org availability\n- Your downloads limit (200 subtitles per 24h)\n\nThe subtitles search and download service is powered by opensubtitles.org. Be sure to donate if you appreciate the service provided!")
         sys.exit(2)
 
     # ==== Search and download subtitles
@@ -873,7 +875,7 @@ try:
 
             # Print a message if no subtitles have been found, for any of the languages
             if searchLanguageResult == 0:
-                superPrint("info", "No subtitles found for: " + videoFileName, '<b>No subtitles found</b> for this video:\n<i>' + videoFileName + '</i>')
+                superPrint("info", "No subtitles available :-(", '<b>No subtitles found</b> for this video:\n<i>' + videoFileName + '</i>')
                 ExitCode = 1
             else:
                 ExitCode = 0
@@ -886,15 +888,17 @@ except (OSError, IOError, RuntimeError, TypeError, NameError, KeyError):
 
     # An unknown error occur, let's apologize before exiting
     superPrint("error", "Unexpected error!", "OpenSubtitlesDownloadQt encountered an <b>unknown error</b>, sorry about that...\n\n" + \
-               "Error: <b>" + str(sys.exc_info()[0]).replace('<', '[').replace('>', ']') + "</b>\n\n" + \
+               "Error: <b>" + str(sys.exc_info()[0]).replace('<', '[').replace('>', ']') + "</b>\n" + \
+               "Line: <b>" + str(sys.exc_info()[-1].tb_lineno) + "</b>\n\n" + \
                "Just to be safe, please check:\n- www.opensubtitles.org availability\n- Your downloads limit (200 subtitles per 24h)\n- Your Internet connection status\n- That are using the latest version of this software ;-)")
 
 except Exception:
 
     # Catch unhandled exceptions but do not spawn an error window
-    superPrint("error:", "Unknown error!", str(sys.exc_info()[0]))
+    print("Unexpected error (line " + str(sys.exc_info()[-1].tb_lineno) + "): " + str(sys.exc_info()[0]))
 
 # Disconnect from opensubtitles.org server, then exit
-if session['token']:
+if session and session['token']:
     osd_server.LogOut(session['token'])
+
 sys.exit(ExitCode)
