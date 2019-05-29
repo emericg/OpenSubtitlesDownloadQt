@@ -83,32 +83,37 @@ opt_byname = "on" # DEPRECATED
 def readSettings():
     """Read settings from file, or initialize them"""
 
-    # Get options from config file if it exists
+    # Get options from config file, if it exists
     if os.path.isfile(confpath):
         confparser = configparser.ConfigParser()
-        confparser.read(confpath)
+        try:
+            confparser.read(confpath)
 
-        languages = ""
-        for i in range(0, len(confparser.items('languages'))):
-            languages += confparser.get('languages', 'sublanguageids' + str(i)) + ","
+            languages = ""
+            for i in range(0, len(confparser.items('languages'))):
+                languages += confparser.get('languages', 'sublanguageids' + str(i)) + ","
 
-        opt_languages.clear()
-        opt_languages.append(languages)
+            opt_languages.clear()
+            opt_languages.append(languages)
 
-        osd_username = confparser.get('settings', 'osd_username')
-        osd_password = confparser.get('settings', 'osd_password')
-        opt_search_overwrite = confparser.get('settings', 'opt_overwrite')
-        opt_search_mode = confparser.get('settings', 'opt_search_mode')
-        opt_selection_mode = confparser.get('settings', 'opt_selection_mode')
-        opt_language_suffix = confparser.get('settings', 'opt_language_suffix')
-        opt_language_separator = confparser.get('settings', 'opt_language_separator')
-        opt_display_language = confparser.get('gui', 'opt_display_language')
-        opt_display_match = confparser.get('gui', 'opt_display_match')
-        opt_display_hi = confparser.get('gui', 'opt_display_hi')
-        opt_display_rating = confparser.get('gui', 'opt_display_rating')
-        opt_display_count = confparser.get('gui', 'opt_display_count')
+            osd_username = confparser.get('settings', 'osd_username')
+            osd_password = confparser.get('settings', 'osd_password')
+            opt_search_overwrite = confparser.get('settings', 'opt_overwrite')
+            opt_search_mode = confparser.get('settings', 'opt_search_mode')
+            opt_selection_mode = confparser.get('settings', 'opt_selection_mode')
+            opt_language_suffix = confparser.get('settings', 'opt_language_suffix')
+            opt_language_separator = confparser.get('settings', 'opt_language_separator')
+            opt_display_language = confparser.get('gui', 'opt_display_language')
+            opt_display_match = confparser.get('gui', 'opt_display_match')
+            opt_display_hi = confparser.get('gui', 'opt_display_hi')
+            opt_display_rating = confparser.get('gui', 'opt_display_rating')
+            opt_display_count = confparser.get('gui', 'opt_display_count')
 
-        return True
+            return True
+
+        except:
+            confparser.clear()
+            confparser.write(open(confpath, 'w'))
 
     return False
 
@@ -116,8 +121,8 @@ def saveSettings():
     """Save settings to file"""
 
     confparser = configparser.ConfigParser()
-    confparser.add_section('languages')
 
+    confparser.add_section('languages')
     i = 0
     for ids in opt_languages:
         confparser.set ('languages', 'sublanguageids'+str(i), ids)
@@ -140,8 +145,7 @@ def saveSettings():
     confparser.set('gui', 'opt_display_count', str(opt_display_count))
 
     if confpath:
-        with open(confpath, 'w') as confile:
-            confparser.write(confile)
+        confparser.write(open(confpath, 'w'))
         return True
 
     return False
@@ -718,7 +722,8 @@ if not os.path.isfile(confpath): # Config file not found, call config window
         sys.exit(ExitCode)
 else:
     # Load settings
-    readSettings()
+    if not readSettings():
+        spawnSettingsWindow()
 
 # ==== Argument parsing
 
